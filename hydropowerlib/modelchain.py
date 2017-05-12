@@ -10,7 +10,7 @@ __license__ = "GPLv3"
 
 import logging
 import sys
-from hydropowerlib import power_output
+from hydropowerlib.hydropowerlib import power_output
 
 
 class Modelchain(object):
@@ -49,8 +49,8 @@ class Modelchain(object):
 
     Examples
     --------
-    >>> from hydropowerlib import modelchain
-    >>> from hydropowerlib import hydropower_plant
+    >>> from hydropowerlib.hydropowerlib import modelchain
+    >>> from hydropowerlib.hydropowerlib import hydropower_plant
     >>> example_plant = {
     ...    'H_n': 4.23,
     ...    'Q_n': 12,

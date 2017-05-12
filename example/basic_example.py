@@ -15,8 +15,8 @@ try:
 except ImportError:
     plt = None
 
-from hydropowerlib import modelchain
-from hydropowerlib import hydropower_plant as hpp
+from hydropowerlib.hydropowerlib import modelchain
+from hydropowerlib.hydropowerlib import hydropower_plant as hpp
 
 # Feel free to remove or change these lines
 # import warnings

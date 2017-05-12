@@ -76,7 +76,7 @@ class HydropowerPlant(object):
 
     Examples
     --------
-    >>> from hydropowerlib import hydropower_plant
+    >>> from hydropowerlib.hydropowerlib import hydropower_plant
     >>> example_plant = {
     ...    'H_n': 4.23,
     ...    'Q_n': 12,
@@ -117,7 +117,7 @@ class HydropowerPlant(object):
 
         Examples
         --------
-        >>> from hydropowerlib import hydropower_plant
+        >>> from hydropowerlib.hydropowerlib import hydropower_plant
         >>> example_plant = {
         ...    'H_n': 4.23,
         ...    'Q_n': 12,
@@ -189,7 +189,7 @@ def get_turbine_types(print_out=True, **kwargs):
 
     Examples
     --------
-    >>> from hydropowerlib import hydropower_plant
+    >>> from hydropowerlib.hydropowerlib import hydropower_plant
     >>> valid_types_df = hydropower_plant.get_turbine_types(print_out=False)
     >>> print(valid_types_df.iloc[5])
     turbine_type    Kaplan
