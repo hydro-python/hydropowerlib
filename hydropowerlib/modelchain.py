@@ -89,7 +89,7 @@ class Modelchain(object):
 
         Returns
         -------
-        rho : pandas.Series or array
+        rho : float
             Density of water in kg/m³ at the location.
 
         """
@@ -133,7 +133,7 @@ class Modelchain(object):
         Parameters
         ----------
         Q : pandas.Series or array
-            Flow of the river in m3/s.
+            Flow of the river in m3/s.F
         W : pandas:Series or array
             Water level in m.
         rho : pandas.Series or array

@@ -28,7 +28,7 @@ def output_from_eta_values(Q, W, hpp,rho,g):
         Water level in m.
     hpp : instance of the :class:`~.hydropower_plant.HydropowerPlant` class
         Specifications of the hydropower plant
-    rho : pandas.Series or array
+    rho : float
         Density of water in kg/m³.
     g : float
         Acceleration of gravity in m/s2.    
@@ -68,7 +68,7 @@ def output_from_eta_values(Q, W, hpp,rho,g):
     eta_turb = np.interp(load, hpp.eta_turb_values.index, hpp.eta_turb_values.eta,
                           left=0, right=0)
     for timestep in load.index:
-        power_output[timestep] = eta_turb[load[timestep]] * hpp.eta_gen * g * rho[timestep] * min(Q[timestep],hpp.Q_n) * (hpp.H_n+hpp.W_n-W[timestep])
+        power_output[timestep] = eta_turb[load[timestep]] * hpp.eta_gen * g * rho * min(Q[timestep],hpp.Q_n) * (hpp.H_n+hpp.W_n-W[timestep])
 
     # Set index for time series
     try:
@@ -96,7 +96,7 @@ def output_from_parameters(Q, W, hpp,rho,g):
         Water level in m.
     hpp : instance of the :class:`~.hydropower_plant.HydropowerPlant` class
         Specifications of the hydropower plant
-    rho : pandas.Series or array
+    rho : float
         Density of water in kg/m³.
     g : float
         Acceleration of gravity in m/s2.   
@@ -122,14 +122,14 @@ def output_from_parameters(Q, W, hpp,rho,g):
     for timestep in load.index:
         if load[timestep]<hpp.turbine_parameters["load_min"][0]:
             eta_turb=0
-            power_output[timestep] = eta_turb * hpp.eta_gen * g * rho[timestep] * min(Q[timestep], hpp.Q_n) * (hpp.H_n + hpp.W_n - W[timestep])
+            power_output[timestep] = eta_turb * hpp.eta_gen * g * rho* min(Q[timestep], hpp.Q_n) * (hpp.H_n + hpp.W_n - W[timestep])
         elif load[timestep]>=1:
             eta_turb=hpp.turbine_parameters["eta_n"][0]
-            power_output[timestep] = eta_turb * hpp.eta_gen * g * rho[timestep] * min(Q[timestep], hpp.Q_n) * (
+            power_output[timestep] = eta_turb * hpp.eta_gen * g * rho* min(Q[timestep], hpp.Q_n) * (
             hpp.H_n + hpp.W_n - W[timestep])
         else:
             eta_turb=(load[timestep]-hpp.turbine_parameters["load_min"][0])/(hpp.turbine_parameters["a1"][0]+hpp.turbine_parameters["a2"][0]*(load[timestep]-hpp.turbine_parameters["load_min"][0])+hpp.turbine_parameters["a3"][0]*(load[timestep]-hpp.turbine_parameters["load_min"][0])*(load[timestep]-hpp.turbine_parameters["load_min"][0]))
-        power_output[timestep] = eta_turb * hpp.eta_gen * g * rho[timestep] * min(Q[timestep], hpp.Q_n) * (
+        power_output[timestep] = eta_turb * hpp.eta_gen * g * rho* min(Q[timestep], hpp.Q_n) * (
         hpp.H_n + hpp.W_n - W[timestep])
     #power_output = eta_turb*hpp.eta_gen*g*rho*min(Q,hpp.Q_n)*(hpp.H_n+hpp.W_n-W)
     # Set index for time series
