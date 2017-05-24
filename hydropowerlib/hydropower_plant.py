@@ -88,7 +88,7 @@ class HydropowerPlant(object):
 
     """
 
-    def __init__(self, turbine_type, Q_n, H_n, W_n, Q_rest, eta_gen, eta_turb_values=None,
+    def __init__(self, Q_n, H_n, W_n, Q_rest, eta_gen, turbine_type=None, eta_turb_values=None,
                  turbine_parameters = None,latitude=None):
 
         self.turbine_type = turbine_type
@@ -104,8 +104,10 @@ class HydropowerPlant(object):
 
         self.power_output = None
 
-        if self.eta_turb_values is None and self.turbine_parameters is None:
+        if self.turbine_type is None :
+            self.fetch_turbine_type()
 
+        if self.eta_turb_values is None and self.turbine_parameters is None:
             self.turbine_parameters=self.fetch_turbine_data()
 
 
@@ -144,6 +146,97 @@ class HydropowerPlant(object):
         filename='turbine_type.csv'
         return restructure_data()
 
+    def fetch_turbine_type(self):
+        r"""
+        Fetches type of the requested hydropower turbine by situating it on a H_n/Q_n characteristic diagram of different turbines.
+        The characteristic zones of each turbine are polygons in a Q_n / H_n plan and are defined by their angles.
+        The list of angles for each type of turbine is given in "data/charac_diagrams.csv" and is based on https://de.wikipedia.org/wiki/Wasserturbine#/media/File:Kennfeld.PNG
+        :return: 
+        """
+
+        def ccw(A, B, C):
+            r"""
+            Function to check if three points are called counterclockwise or clockwise
+            Based on http://bryceboe.com/2006/10/23/line-segment-intersection-algorithm/
+            :param A: [float, float]
+            Coordinates of the first point
+            :param B: [float, float]
+            Coordinates of the second point
+            :param C: [float, float]
+            Coordinates of the third point
+            :return: 
+            True if A, B and C are in counterclockwise order
+            False if A, B and C are in clockwise order
+            """
+            return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+
+        def intersec(A, B, C):
+            r"""
+            Function to determine if the half line defined as y=yA and x>=xA crosses the [BC[ segment
+            Based on http://bryceboe.com/2006/10/23/line-segment-intersection-algorithm/
+            :param A: [float, float]
+            :param B: [float, float]
+            :param C: [float, float]
+            :return: bool
+            """
+            if B == C:
+                # if [BC] is a point
+                return False
+            else:
+                if B[1] == C[1]:
+                    # if [BC[ is horizontal
+                    # the segment and the horizontal half-line are parallel and never cross
+                    # (overlapping is not considered an intersection here)
+                    return False
+                elif A[1] == B[1] and A[0] <= B[0]:
+                    # in order not to count twice an intersection on an angle of the polygon,
+                    # only the segment [BC[ is considered
+                    return True
+                elif A[1] == C[1]:
+                    return False
+                else:
+                    # define a point on the horizontal half-line starting in A
+                    # check if the two segments intersect
+                    D = (max(B[0], C[0]) + 1, A[1])
+                    return ccw(A, C, B) != ccw(D, C, B) and ccw(A, D, C) != ccw(A, D, B)
+
+        df = pd.read_csv('data/charac_diagrams.csv', index_col=0)
+        turbine_types = []
+        charac_diagrams = pd.DataFrame()
+
+        for col in df.columns:
+            turbine_type = col[:len(col) - 3]
+            if turbine_type not in turbine_types:
+                turbine_types.append(turbine_type)
+                charac_diagrams[turbine_type] = ""
+            for i in df.index:
+                if col[-2:] == 'Qn':
+                    charac_diagrams.at[i, turbine_type] = df.loc[i, col]
+                elif col[-2:] == 'Hn':
+                    charac_diagrams.at[i, turbine_type] = [charac_diagrams.loc[i, turbine_type], df.loc[i, col]]
+
+        for turbine_type in turbine_types:
+            intersections = 0
+            for i in charac_diagrams.index:
+                if i == len(charac_diagrams.index):
+                    if intersec([self.Q_n,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[1, turbine_type]):
+                        intersections = intersections + 1
+                else:
+                    if (charac_diagrams.loc[i + 1, turbine_type])[0] != (charac_diagrams.loc[i + 1, turbine_type])[0] or \
+                                    (charac_diagrams.loc[i + 1, turbine_type])[1] != (charac_diagrams.loc[i + 1, turbine_type])[1]:
+                        if intersec([self.Q_n,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[1, turbine_type]):
+                            intersections = intersections + 1
+                        break
+                    else:
+                        if intersec([self.Q_n,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[i + 1, turbine_type]):
+                            intersections = intersections + 1
+            if intersections % 2 != 0:
+                self.turbine_type=turbine_type
+                break
+        if self.turbine_type is None:
+            logging.info('Turbine type could not be defined')
+            sys.exit()
 
 def read_turbine_data(**kwargs):
     r"""
