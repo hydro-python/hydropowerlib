@@ -10,6 +10,8 @@ import logging
 import sys
 import os
 import numpy as np
+from tkinter import filedialog
+
 
 __copyright__ = "Copyright oemof developer group"
 __license__ = "GPLv3"
@@ -58,6 +60,8 @@ class HydropowerPlant(object):
         Nominal head of water in m.
     W_n : float
         Nominal water level leaving the plant in m.
+    P_n : float
+        Nominal power output in W.
     Q_rest : float
         Part of the water flow that cannot be used (fish ladder, compulsory minimal water flow leaving the plant...)
     eta_turb_values : pandas.DataFrame
@@ -88,7 +92,7 @@ class HydropowerPlant(object):
 
     """
 
-    def __init__(self, Q_n, H_n, W_n, Q_rest, eta_gen, turbine_type=None, eta_turb_values=None,
+    def __init__(self, H_n, W_n, Q_rest, eta_gen,Q_n=None, P_n=None, turbine_type=None, eta_turb_values=None,
                  turbine_parameters = None,latitude=None):
 
         self.turbine_type = turbine_type
@@ -100,9 +104,14 @@ class HydropowerPlant(object):
         self.turbine_parameters = turbine_parameters
         self.eta_gen = eta_gen
         self.latitude=latitude
+        self.P_n=P_n
+
 
 
         self.power_output = None
+
+        if self.Q_n is None:
+            self.get_nominal_flow()
 
         if self.turbine_type is None :
             self.fetch_turbine_type()
@@ -145,6 +154,26 @@ class HydropowerPlant(object):
             return hpp_df
         filename='turbine_type.csv'
         return restructure_data()
+
+    def get_nominal_flow(self):
+        r"""
+        Extrapolates the nominal flow value from historical or simulated waterflow. 
+        We suppose that the power plant is designed so that the nominal waterflow is achieved 30% of the time. 
+        The waterflow data is imported through the selected csv files, where it is stored in a column named 'Q'.
+        For better results, the data should cover several whole years (10 to 20 years).
+        For later : a distinction can be made between isolated operation (250 days a year) or parallel operation 
+        (50 to 120 days a year depending on sources).
+        :return: 
+        """
+        jdl = pd.Series([])
+        files = filedialog.askopenfilename(title="Select files with water flow values for the plant :",
+                                           filetypes=[("csv files", "*.csv")], multiple=1)
+        for file in files:
+            df = pd.read_csv(file)
+            jdl = jdl.append(to_append=df["Q"], ignore_index=True)
+        jdl = pd.Series(jdl.sort_values(ascending=False).values, index=jdl.index / max(jdl.index) * 100)
+        self.Q_n = np.interp(np.arange(0, 100, 1), jdl.index, jdl.values, left=0, right=0)[30]
+
 
     def fetch_turbine_type(self):
         r"""
@@ -237,6 +266,7 @@ class HydropowerPlant(object):
         if self.turbine_type is None:
             logging.info('Turbine type could not be defined')
             sys.exit()
+
 
 def read_turbine_data(**kwargs):
     r"""
