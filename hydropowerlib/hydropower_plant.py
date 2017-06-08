@@ -35,7 +35,7 @@ class HydropowerPlant(object):
         Nominal water level leaving the plant in m.
     Q_rest : float
         Part of the water flow that cannot be used (fish ladder, compulsory minimal water flow leaving the plant...)
-    eta_turb_values : pandas.DataFrame
+    eta_turb_values : pandas.Series
         Efficiency of the turbine depending on partial load.
         The indices of the DataFrame are the corresponding partial loads of the
         efficiency curve, the efficiency values are listed in
