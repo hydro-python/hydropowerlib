@@ -328,6 +328,6 @@ def get_turbine_types(print_out=True, **kwargs):
 
     if print_out:
         pd.set_option('display.max_rows', len(df))
-        print(df[['type', 'eta_nom']])
+        print(df[['type', 'eta_n']])
         pd.reset_option('display.max_rows')
-    return df[['type', 'eta_nom']]
+    return df[['type', 'eta_n']]
