@@ -230,7 +230,8 @@ class HydropowerPlant(object):
                     D = (max(B[0], C[0]) + 1, A[1])
                     return ccw(A, C, B) != ccw(D, C, B) and ccw(A, D, C) != ccw(A, D, B)
 
-        df = pd.read_csv('data/charac_diagrams.csv', index_col=0)
+        df = pd.read_csv(os.path.join(os.path.join(os.path.dirname(__file__), 'data'), 'charac_diagrams.csv'),
+                         index_col=0)
         turbine_types = []
         charac_diagrams = pd.DataFrame()
 
