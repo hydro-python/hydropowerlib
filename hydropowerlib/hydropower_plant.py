@@ -168,6 +168,9 @@ class HydropowerPlant(object):
         jdl = pd.Series([])
         files = filedialog.askopenfilename(title="Select files with water flow values for the plant :",
                                            filetypes=[("csv files", "*.csv")], multiple=1)
+        if len(files)==0:
+            logging.info('Nominal waterflow could not be defined')
+            sys.exit()
         for file in files:
             df = pd.read_csv(file)
             jdl = jdl.append(to_append=df["Q"], ignore_index=True)
