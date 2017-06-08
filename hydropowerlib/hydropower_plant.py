@@ -113,11 +113,17 @@ class HydropowerPlant(object):
         if self.Q_n is None:
             self.get_nominal_flow()
 
+      #  if self.H_n is None:
+       #     self.get_nominal_head()
+
         if self.turbine_type is None :
             self.fetch_turbine_type()
 
         if self.eta_turb_values is None and self.turbine_parameters is None:
-            self.turbine_parameters=self.fetch_turbine_data()
+            if self.turbine_type is None:
+                self.eta_turb_values=pd.Series([0,0.9,0.9], index=[0,0.2,1])
+            else:
+                self.turbine_parameters=self.fetch_turbine_data()
 
 
     def fetch_turbine_data(self):
