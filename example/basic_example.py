@@ -63,17 +63,19 @@ def read_river_data(filename, datetime_column='Unnamed: 0',
 river_data = read_river_data('river.csv')
 
 # Specifications of the hydropower plant
-hydro_example = {
-    'Q_n': 12,
-    'H_n': 7.47,
+hydro_Kyll = {
+    'H_n': 3.5,
     'W_n': 150,
-    'Q_rest':0.35,
-    'turbine_type':'Kaplan',
+    'P_n':500000,
+    'turb_num':2,
     'eta_gen':0.95}
 
 
 # Initialize HydropowerPlant objects
-hpp_ex = hpp.HydropowerPlant(**hydro_example)
+hpp_ex = hpp.HydropowerPlant(**hydro_Kyll)
+print(hpp_ex.turbine_type)
+print(hpp_ex.Q_n)
+
 
 # Specifications of the modelchain data
 modelchain_data = {

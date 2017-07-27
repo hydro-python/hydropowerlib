@@ -24,7 +24,7 @@ class HydropowerPlant(object):
     Parameters
     ----------
     turbine_type : string
-        Type of the turbine.
+        Type of the turbine. All turbines of the power plant have to be the same type.
         Use get_turbine_types() to see a list of all turbines for which
         efficiency curve data is provided.
     Q_n : float
@@ -35,6 +35,8 @@ class HydropowerPlant(object):
         Nominal water level leaving the plant in m.
     Q_rest : float
         Part of the water flow that cannot be used (fish ladder, compulsory minimal water flow leaving the plant...)
+    turb_num : int
+        Number of turbines in the power plant. Default : 1
     eta_turb_values : pandas.Series
         Efficiency of the turbine depending on partial load.
         The indices of the DataFrame are the corresponding partial loads of the
@@ -64,6 +66,8 @@ class HydropowerPlant(object):
         Nominal power output in W.
     Q_rest : float
         Part of the water flow that cannot be used (fish ladder, compulsory minimal water flow leaving the plant...)
+    turb_num : int
+        Number of turbines in the power plant. Default : 1
     eta_turb_values : pandas.DataFrame
         Efficiency of the turbine depending on partial load.
         The indices of the DataFrame are the corresponding partial loads of the
@@ -92,7 +96,7 @@ class HydropowerPlant(object):
 
     """
 
-    def __init__(self, H_n, W_n, Q_rest, eta_gen,Q_n=None, P_n=None, turbine_type=None, eta_turb_values=None,
+    def __init__(self, H_n, W_n,  eta_gen,turb_num=1,Q_rest=None,Q_n=None, P_n=None, turbine_type=None, eta_turb_values=None,
                  turbine_parameters = None,latitude=None):
 
         self.turbine_type = turbine_type
@@ -104,14 +108,18 @@ class HydropowerPlant(object):
         self.turbine_parameters = turbine_parameters
         self.eta_gen = eta_gen
         self.latitude=latitude
+        self.turb_num=turb_num
         self.P_n=P_n
 
 
 
         self.power_output = None
 
-        if self.Q_n is None:
-            self.get_nominal_flow()
+        if self.Q_n is None :
+            if self.H_n is None or self.P_n is None:
+                self.get_nominal_flow()
+            else:
+                self.Q_n=self.P_n/(1000*9.81*H_n*self.eta_gen*0.9)
 
       #  if self.H_n is None:
        #     self.get_nominal_head()
@@ -259,16 +267,16 @@ class HydropowerPlant(object):
             intersections = 0
             for i in charac_diagrams.index:
                 if i == len(charac_diagrams.index):
-                    if intersec([self.Q_n,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[1, turbine_type]):
+                    if intersec([self.Q_n/self.turb_num,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[1, turbine_type]):
                         intersections = intersections + 1
                 else:
                     if (charac_diagrams.loc[i + 1, turbine_type])[0] != (charac_diagrams.loc[i + 1, turbine_type])[0] or \
                                     (charac_diagrams.loc[i + 1, turbine_type])[1] != (charac_diagrams.loc[i + 1, turbine_type])[1]:
-                        if intersec([self.Q_n,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[1, turbine_type]):
+                        if intersec([self.Q_n/self.turb_num,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[1, turbine_type]):
                             intersections = intersections + 1
                         break
                     else:
-                        if intersec([self.Q_n,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[i + 1, turbine_type]):
+                        if intersec([self.Q_n/self.turb_num,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[i + 1, turbine_type]):
                             intersections = intersections + 1
             if intersections % 2 != 0:
                 self.turbine_type=turbine_type
