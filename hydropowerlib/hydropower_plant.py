@@ -11,6 +11,7 @@ import sys
 import os
 import numpy as np
 from tkinter import filedialog
+from scipy import stats
 
 
 __copyright__ = "Copyright oemof developer group"
@@ -96,7 +97,7 @@ class HydropowerPlant(object):
 
     """
 
-    def __init__(self, H_n, W_n,  eta_gen,turb_num=1,Q_rest=None,Q_n=None, P_n=None, turbine_type=None, eta_turb_values=None,
+    def __init__(self,  P_n, eta_gen=0.9,turb_num=1,H_n=None, W_n=None,Q_rest=None,Q_n=None, turbine_type=None, eta_turb_values=None,
                  turbine_parameters = None,latitude=None):
 
         self.turbine_type = turbine_type
@@ -115,14 +116,11 @@ class HydropowerPlant(object):
 
         self.power_output = None
 
-        if self.Q_n is None :
-            if self.H_n is None or self.P_n is None:
-                self.get_nominal_flow()
-            else:
-                self.Q_n=self.P_n/(1000*9.81*H_n*self.eta_gen*0.9)
+        if self.Q_n is None or self.W_n is None :
+            self.get_nominal_flow()
 
-      #  if self.H_n is None:
-       #     self.get_nominal_head()
+        if self.H_n is None :
+            self.get_nominal_head()
 
         if self.turbine_type is None :
             self.fetch_turbine_type()
@@ -179,17 +177,36 @@ class HydropowerPlant(object):
         (50 to 120 days a year depending on sources).
         :return: 
         """
-        jdl = pd.Series([])
-        files = filedialog.askopenfilename(title="Select files with water flow values for the plant :",
+
+        if self.H_n is not None and self.P_n is not None:
+            self.Q_n = self.P_n / (1000 * 9.81 * self.H_n * self.eta_gen * 0.9)
+        else:
+            Q_data=pd.Series([])
+            W_data=pd.Series([])
+            files = filedialog.askopenfilename(title="Select files with water flow and water level values for the plant :",
                                            filetypes=[("csv files", "*.csv")], multiple=1)
-        if len(files)==0:
-            logging.info('Nominal waterflow could not be defined')
-            sys.exit()
-        for file in files:
-            df = pd.read_csv(file)
-            jdl = jdl.append(to_append=df["Q"], ignore_index=True)
-        jdl = pd.Series(jdl.sort_values(ascending=False).values, index=jdl.index / max(jdl.index) * 100)
-        self.Q_n = np.interp(np.arange(0, 100, 1), jdl.index, jdl.values, left=0, right=0)[30]
+            if len(files)==0:
+                logging.info('Nominal waterflow and water level could not be defined')
+                sys.exit()
+            for file in files:
+                df = pd.read_csv(file)
+                Q_data = Q_data.append(to_append=df["Q"], ignore_index=True)
+                W_data=W_data.append(to_append=df["W"], ignore_index=True)
+            if self.Q_n is None:
+                jdl = pd.Series(Q_data.sort_values(ascending=False).values, index=Q_data.index / max(Q_data.index) * 100)
+                self.Q_n = np.interp(np.arange(0, 100, 1), jdl.index, jdl.values, left=0, right=0)[30]
+            if self.W_n is None:
+                slope, intercept, r_value, p_value, std_err = stats.linregress(Q_data, W_data) #linregress(x,y)
+                if r_value>0.8:
+                    self.W_n=slope*self.Q_n+intercept
+                else:
+                    logging.info('Nominal water level could not be defined from dataset')
+                    sys.exit()
+
+    def get_nominal_head(self):
+        self.H_n=self.P_n/(1000*9.81*self.Q_n*self.eta_gen*0.9)
+
+
 
 
     def fetch_turbine_type(self):
