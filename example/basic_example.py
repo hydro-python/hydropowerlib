@@ -1,5 +1,5 @@
 """
-The ``basic_example`` module shows a simple usage of the windpowerlib.
+The ``basic_example`` module shows a simple usage of the hydropowerlib.
 
 """
 
@@ -10,13 +10,14 @@ import logging
 import os
 import pandas as pd
 
+
 try:
     from matplotlib import pyplot as plt
 except ImportError:
     plt = None
 
-from hydropowerlib.hydropowerlib import modelchain
-from hydropowerlib.hydropowerlib import hydropower_plant as hpp
+from git_repos.hydropowerlib.hydropowerlib import modelchain
+from git_repos.hydropowerlib.hydropowerlib import hydropower_plant as hpp
 
 # Feel free to remove or change these lines
 # import warnings
@@ -60,19 +61,20 @@ def read_river_data(filename, datetime_column='Unnamed: 0',
         'UTC').tz_convert('Europe/Berlin').drop(datetime_column, 1)
 
 # Read weather data from csv
-river_data = read_river_data('river.csv')
+river_data = read_river_data('river_raon.csv')
 
 # Specifications of the hydropower plant
-hydro_Kyll = {
-    'H_n': 3.5,
-    'W_n': 150,
-    'P_n':500000,
-    'turb_num':2,
+hydro_Raon = {
+    'H_n': 4.23,
+    'Q_n': 12,
+    'W_n': 80,
+    'P_n':400000,
+    'turb_num':1,
     'eta_gen':0.95}
 
 
 # Initialize HydropowerPlant objects
-hpp_ex = hpp.HydropowerPlant(**hydro_Kyll)
+hpp_ex = hpp.HydropowerPlant(**hydro_Raon)
 print(hpp_ex.turbine_type)
 print(hpp_ex.Q_n)
 

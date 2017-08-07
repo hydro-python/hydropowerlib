@@ -10,7 +10,7 @@ __license__ = "GPLv3"
 
 import logging
 import sys
-from hydropowerlib.hydropowerlib import power_output
+from git_repos.hydropowerlib.hydropowerlib import power_output
 
 
 class Modelchain(object):
