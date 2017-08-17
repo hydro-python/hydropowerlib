@@ -10,7 +10,7 @@ __license__ = "GPLv3"
 
 import logging
 import sys
-from hydropowerlib.hydropowerlib import power_output
+from git_repos.hydropowerlib.hydropowerlib import power_output
 
 
 class Modelchain(object):
@@ -156,9 +156,11 @@ class Modelchain(object):
             else:
                 # calculate from Quaschning
                 output=power_output.output_from_parameters(Q,W,self.hydropower_plant,rho,g)
+                print('output from parameters')
         else:
             # calculate from csv file
             output=power_output.output_from_eta_values(Q,W,self.hydropower_plant,rho,g)
+            print('output from eta values')
 
         return output
 

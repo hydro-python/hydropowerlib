@@ -1,5 +1,5 @@
 """
-The ``basic_example`` module shows a simple usage of the windpowerlib.
+The ``basic_example`` module shows a simple usage of the hydropowerlib.
 
 """
 
@@ -10,13 +10,14 @@ import logging
 import os
 import pandas as pd
 
+
 try:
     from matplotlib import pyplot as plt
 except ImportError:
     plt = None
 
-from hydropowerlib.hydropowerlib import modelchain
-from hydropowerlib.hydropowerlib import hydropower_plant as hpp
+from git_repos.hydropowerlib.hydropowerlib import modelchain
+from git_repos.hydropowerlib.hydropowerlib import hydropower_plant as hpp
 
 # Feel free to remove or change these lines
 # import warnings
@@ -60,20 +61,23 @@ def read_river_data(filename, datetime_column='Unnamed: 0',
         'UTC').tz_convert('Europe/Berlin').drop(datetime_column, 1)
 
 # Read weather data from csv
-river_data = read_river_data('river.csv')
+river_data = read_river_data('river_raon.csv')
 
 # Specifications of the hydropower plant
-hydro_example = {
+hydro_Raon = {
+    'H_n': 4.23,
     'Q_n': 12,
-    'H_n': 7.47,
-    'W_n': 150,
-    'Q_rest':0.35,
-    'turbine_type':'Kaplan',
+    'W_n': 0.8,
+    'P_n':400000,
+    'turb_num':1,
     'eta_gen':0.95}
 
 
 # Initialize HydropowerPlant objects
-hpp_ex = hpp.HydropowerPlant(**hydro_example)
+hpp_ex = hpp.HydropowerPlant(**hydro_Raon)
+print(hpp_ex.turbine_type)
+print(hpp_ex.Q_n)
+
 
 # Specifications of the modelchain data
 modelchain_data = {
@@ -101,5 +105,11 @@ else:
     if hpp_ex.eta_turb_values is not None:
         print("The efficency value with a normalized waterflow of 0,6: {0}".format(
             hpp_ex.eta_turb_values.eta_turb[0.6]))
+
+print(hpp_ex.power_output)
+output_april=hpp_ex.power_output.loc['2017-04-12 00:00:00':'2017-04-30 23:00:00']
+print(output_april.sum())
+output_may=hpp_ex.power_output.loc['2017-05-01 00:00:00':'2017-05-31 23:00:00']
+print(output_may.sum())
 
 logging.info('Done!')

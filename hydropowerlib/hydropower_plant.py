@@ -10,6 +10,9 @@ import logging
 import sys
 import os
 import numpy as np
+from tkinter import filedialog
+#from scipy import stats
+
 
 __copyright__ = "Copyright oemof developer group"
 __license__ = "GPLv3"
@@ -22,7 +25,7 @@ class HydropowerPlant(object):
     Parameters
     ----------
     turbine_type : string
-        Type of the turbine.
+        Type of the turbine. All turbines of the power plant have to be the same type.
         Use get_turbine_types() to see a list of all turbines for which
         efficiency curve data is provided.
     Q_n : float
@@ -33,7 +36,9 @@ class HydropowerPlant(object):
         Nominal water level leaving the plant in m.
     Q_rest : float
         Part of the water flow that cannot be used (fish ladder, compulsory minimal water flow leaving the plant...)
-    eta_turb_values : pandas.DataFrame
+    turb_num : int
+        Number of turbines in the power plant. Default : 1
+    eta_turb_values : pandas.Series
         Efficiency of the turbine depending on partial load.
         The indices of the DataFrame are the corresponding partial loads of the
         efficiency curve, the efficiency values are listed in
@@ -58,8 +63,12 @@ class HydropowerPlant(object):
         Nominal head of water in m.
     W_n : float
         Nominal water level leaving the plant in m.
+    P_n : float
+        Nominal power output in W.
     Q_rest : float
         Part of the water flow that cannot be used (fish ladder, compulsory minimal water flow leaving the plant...)
+    turb_num : int
+        Number of turbines in the power plant. Default : 1
     eta_turb_values : pandas.DataFrame
         Efficiency of the turbine depending on partial load.
         The indices of the DataFrame are the corresponding partial loads of the
@@ -88,7 +97,7 @@ class HydropowerPlant(object):
 
     """
 
-    def __init__(self, Q_n, H_n, W_n, Q_rest, eta_gen, turbine_type=None, eta_turb_values=None,
+    def __init__(self,  P_n, eta_gen=0.9,turb_num=1,H_n=None, W_n=None,Q_rest=None,Q_n=None, turbine_type=None, eta_turb_values=None,
                  turbine_parameters = None,latitude=None):
 
         self.turbine_type = turbine_type
@@ -100,15 +109,27 @@ class HydropowerPlant(object):
         self.turbine_parameters = turbine_parameters
         self.eta_gen = eta_gen
         self.latitude=latitude
+        self.turb_num=turb_num
+        self.P_n=P_n
+
 
 
         self.power_output = None
+
+        if self.Q_n is None or self.W_n is None :
+            self.get_nominal_flow()
+
+        if self.H_n is None :
+            self.get_nominal_head()
 
         if self.turbine_type is None :
             self.fetch_turbine_type()
 
         if self.eta_turb_values is None and self.turbine_parameters is None:
-            self.turbine_parameters=self.fetch_turbine_data()
+            if self.turbine_type is None:
+                self.eta_turb_values=pd.Series([0,0.9,0.9], index=[0,0.2,1])
+            else:
+                self.turbine_parameters=self.fetch_turbine_data()
 
 
     def fetch_turbine_data(self):
@@ -145,6 +166,48 @@ class HydropowerPlant(object):
             return hpp_df
         filename='turbine_type.csv'
         return restructure_data()
+
+    def get_nominal_flow(self):
+        r"""
+        Extrapolates the nominal flow value from historical or simulated waterflow. 
+        We suppose that the power plant is designed so that the nominal waterflow is achieved 30% of the time. 
+        The waterflow data is imported through the selected csv files, where it is stored in a column named 'Q'.
+        For better results, the data should cover several whole years (10 to 20 years).
+        For later : a distinction can be made between isolated operation (250 days a year) or parallel operation 
+        (50 to 120 days a year depending on sources).
+        :return: 
+        """
+
+        if self.H_n is not None and self.P_n is not None:
+            self.Q_n = self.P_n / (1000 * 9.81 * self.H_n * self.eta_gen * 0.9)
+        else:
+            Q_data=pd.Series([])
+            W_data=pd.Series([])
+            files = filedialog.askopenfilename(title="Select files with water flow and water level values for the plant :",
+                                           filetypes=[("csv files", "*.csv")], multiple=1)
+            if len(files)==0:
+                logging.info('Nominal waterflow and water level could not be defined')
+                sys.exit()
+            for file in files:
+                df = pd.read_csv(file)
+                Q_data = Q_data.append(to_append=df["Q"], ignore_index=True)
+                W_data=W_data.append(to_append=df["W"], ignore_index=True)
+            if self.Q_n is None:
+                jdl = pd.Series(Q_data.sort_values(ascending=False).values, index=Q_data.index / max(Q_data.index) * 100)
+                self.Q_n = np.interp(np.arange(0, 100, 1), jdl.index, jdl.values, left=0, right=0)[30]
+            # if self.W_n is None:
+            #     slope, intercept, r_value, p_value, std_err = stats.linregress(Q_data, W_data) #linregress(x,y)
+            #     if r_value>0.8:
+            #         self.W_n=slope*self.Q_n+intercept
+            #     else:
+            #         logging.info('Nominal water level could not be defined from dataset')
+            #         sys.exit()
+
+    def get_nominal_head(self):
+        self.H_n=self.P_n/(1000*9.81*self.Q_n*self.eta_gen*0.9)
+
+
+
 
     def fetch_turbine_type(self):
         r"""
@@ -201,7 +264,8 @@ class HydropowerPlant(object):
                     D = (max(B[0], C[0]) + 1, A[1])
                     return ccw(A, C, B) != ccw(D, C, B) and ccw(A, D, C) != ccw(A, D, B)
 
-        df = pd.read_csv('data/charac_diagrams.csv', index_col=0)
+        df = pd.read_csv(os.path.join(os.path.join(os.path.dirname(__file__), 'data'), 'charac_diagrams.csv'),
+                         index_col=0)
         turbine_types = []
         charac_diagrams = pd.DataFrame()
 
@@ -220,16 +284,16 @@ class HydropowerPlant(object):
             intersections = 0
             for i in charac_diagrams.index:
                 if i == len(charac_diagrams.index):
-                    if intersec([self.Q_n,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[1, turbine_type]):
+                    if intersec([self.Q_n/self.turb_num,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[1, turbine_type]):
                         intersections = intersections + 1
                 else:
                     if (charac_diagrams.loc[i + 1, turbine_type])[0] != (charac_diagrams.loc[i + 1, turbine_type])[0] or \
                                     (charac_diagrams.loc[i + 1, turbine_type])[1] != (charac_diagrams.loc[i + 1, turbine_type])[1]:
-                        if intersec([self.Q_n,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[1, turbine_type]):
+                        if intersec([self.Q_n/self.turb_num,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[1, turbine_type]):
                             intersections = intersections + 1
                         break
                     else:
-                        if intersec([self.Q_n,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[i + 1, turbine_type]):
+                        if intersec([self.Q_n/self.turb_num,self.H_n], charac_diagrams.loc[i, turbine_type], charac_diagrams.loc[i + 1, turbine_type]):
                             intersections = intersections + 1
             if intersections % 2 != 0:
                 self.turbine_type=turbine_type
@@ -237,6 +301,7 @@ class HydropowerPlant(object):
         if self.turbine_type is None:
             logging.info('Turbine type could not be defined')
             sys.exit()
+
 
 def read_turbine_data(**kwargs):
     r"""
@@ -294,6 +359,6 @@ def get_turbine_types(print_out=True, **kwargs):
 
     if print_out:
         pd.set_option('display.max_rows', len(df))
-        print(df[['type', 'eta_nom']])
+        print(df[['type', 'eta_n']])
         pd.reset_option('display.max_rows')
-    return df[['type', 'eta_nom']]
+    return df[['type', 'eta_n']]

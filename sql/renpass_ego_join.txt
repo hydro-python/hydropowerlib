@@ -1,0 +1,55 @@
+﻿ SELECT ego.id AS ego_id,
+    ror.ror_nr AS renpass_id,
+        CASE
+            WHEN date_part('year'::text, ego.start_up_date) <> 0::double precision THEN date_part('year'::text, ego.start_up_date)
+            ELSE ror.year::double precision
+        END AS year,
+        CASE
+            WHEN ego.electrical_capacity <> 0::double precision THEN ego.electrical_capacity
+            ELSE (ror.pinst * 1000::numeric)::double precision
+        END AS installed_power,
+        CASE
+            WHEN ego.city <> ''::text THEN ego.city::character varying
+            ELSE ror.city
+        END AS city,
+        CASE
+            WHEN ego.postcode <> ''::text THEN ego.postcode
+            ELSE ror.zip::text
+        END AS zip,
+        CASE
+            WHEN ego.address <> ''::text THEN ego.address::character varying
+            ELSE ror.street
+        END AS address,
+    ego.lon,
+    ego.lat,
+        CASE
+            WHEN ego.eeg_id IS NOT NULL THEN ego.eeg_id::character varying
+            ELSE
+            CASE
+                WHEN "left"(ror.ror_unit::text, 1) = 'E'::text AND length(ror.ror_unit::text) >= 30 THEN ror.ror_unit
+                ELSE NULL::character varying
+            END
+        END AS eeg_id,
+        CASE
+            WHEN "left"(ror.ror_unit::text, 1) <> 'E'::text OR length(ror.ror_unit::text) < 30 THEN ror.ror_unit
+            ELSE NULL::character varying
+        END AS unit,
+    ego.tso_eic AS tso,
+    ego.dso,
+    ego.voltage_level_var AS voltage_level,
+    ror.region_id,
+        CASE
+            WHEN ego.source IS NULL THEN 'renpass'::text
+            ELSE ego.source
+        END AS source,
+        CASE
+            WHEN ego.notification_reason = 'Inbetriebnahme'::text THEN 'OPR'::character varying
+            ELSE ror.status
+        END AS status,
+    ror.company,
+    ror.turbtype,
+    ror.river,
+    ror.river_km,
+    ror.level_meter
+   FROM ego_dp_res_powerplant_hydro ego
+     FULL JOIN renpass.runofriver_register_bs ror ON upper(ego.eeg_id) = upper(ror.ror_unit::text);
