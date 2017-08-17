@@ -156,9 +156,11 @@ class Modelchain(object):
             else:
                 # calculate from Quaschning
                 output=power_output.output_from_parameters(Q,W,self.hydropower_plant,rho,g)
+                print('output from parameters')
         else:
             # calculate from csv file
             output=power_output.output_from_eta_values(Q,W,self.hydropower_plant,rho,g)
+            print('output from eta values')
 
         return output
 

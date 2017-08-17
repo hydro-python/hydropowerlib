@@ -11,7 +11,7 @@ import sys
 import os
 import numpy as np
 from tkinter import filedialog
-from scipy import stats
+#from scipy import stats
 
 
 __copyright__ = "Copyright oemof developer group"
@@ -195,13 +195,13 @@ class HydropowerPlant(object):
             if self.Q_n is None:
                 jdl = pd.Series(Q_data.sort_values(ascending=False).values, index=Q_data.index / max(Q_data.index) * 100)
                 self.Q_n = np.interp(np.arange(0, 100, 1), jdl.index, jdl.values, left=0, right=0)[30]
-            if self.W_n is None:
-                slope, intercept, r_value, p_value, std_err = stats.linregress(Q_data, W_data) #linregress(x,y)
-                if r_value>0.8:
-                    self.W_n=slope*self.Q_n+intercept
-                else:
-                    logging.info('Nominal water level could not be defined from dataset')
-                    sys.exit()
+            # if self.W_n is None:
+            #     slope, intercept, r_value, p_value, std_err = stats.linregress(Q_data, W_data) #linregress(x,y)
+            #     if r_value>0.8:
+            #         self.W_n=slope*self.Q_n+intercept
+            #     else:
+            #         logging.info('Nominal water level could not be defined from dataset')
+            #         sys.exit()
 
     def get_nominal_head(self):
         self.H_n=self.P_n/(1000*9.81*self.Q_n*self.eta_gen*0.9)

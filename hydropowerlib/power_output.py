@@ -125,8 +125,8 @@ def output_from_parameters(Q, W, hpp,rho,g):
             power_output[timestep] = eta_turb * hpp.eta_gen * g * rho* min(Q[timestep], hpp.Q_n) * (hpp.H_n + hpp.W_n - W[timestep])
         elif load[timestep]>=1:
             eta_turb=hpp.turbine_parameters["eta_n"][0]
-            power_output[timestep] = eta_turb * hpp.eta_gen * g * rho* min(Q[timestep], hpp.Q_n) * (
-            hpp.H_n + hpp.W_n - W[timestep])
+            print(hpp.turbine_parameters["eta_n"][0])
+            power_output[timestep] = eta_turb * hpp.eta_gen * g * rho* min(Q[timestep], hpp.Q_n) * (hpp.H_n + hpp.W_n - W[timestep])
         else:
             eta_turb=(load[timestep]-hpp.turbine_parameters["load_min"][0])/(hpp.turbine_parameters["a1"][0]+hpp.turbine_parameters["a2"][0]*(load[timestep]-hpp.turbine_parameters["load_min"][0])+hpp.turbine_parameters["a3"][0]*(load[timestep]-hpp.turbine_parameters["load_min"][0])*(load[timestep]-hpp.turbine_parameters["load_min"][0]))
         power_output[timestep] = eta_turb * hpp.eta_gen * g * rho* min(Q[timestep], hpp.Q_n) * (

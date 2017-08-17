@@ -67,7 +67,7 @@ river_data = read_river_data('river_raon.csv')
 hydro_Raon = {
     'H_n': 4.23,
     'Q_n': 12,
-    'W_n': 80,
+    'W_n': 0.8,
     'P_n':400000,
     'turb_num':1,
     'eta_gen':0.95}
@@ -105,5 +105,11 @@ else:
     if hpp_ex.eta_turb_values is not None:
         print("The efficency value with a normalized waterflow of 0,6: {0}".format(
             hpp_ex.eta_turb_values.eta_turb[0.6]))
+
+print(hpp_ex.power_output)
+output_april=hpp_ex.power_output.loc['2017-04-12 00:00:00':'2017-04-30 23:00:00']
+print(output_april.sum())
+output_may=hpp_ex.power_output.loc['2017-05-01 00:00:00':'2017-05-31 23:00:00']
+print(output_may.sum())
 
 logging.info('Done!')
