@@ -4,35 +4,88 @@ of a hydropower plant.
 
 """
 
-import numpy as np
 import pandas as pd
+import os
+import logging
+import sys
 
 
 __copyright__ = "Copyright oemof developer group"
 __license__ = "GPLv3"
 
-
-def output_from_eta_values(Q, W, hpp,rho,g):
+def get_eta_g_n(P_n):
     r"""
-    Calculates the turbine power output using the given efficiency curve.
+    Calculate the nominal efficiency of the generator based on the nominal power of the plant
+    Source : "Wahl, Dimensionierung und Abnahme einer Kleinturbine" from PACER
+    :param P_n: float
+    :return: 
+    float
+    """
+    if P_n<1000:
+        eta_g_n=80
+    elif P_n<5000:
+        eta_g_n=80+(P_n-1000)/1000*5/4
+    elif P_n<20000:
+        eta_g_n=85+(P_n-5000)/1000*5/15
+    elif P_n<100000:
+        eta_g_n=90+(P_n-20000)/1000*5/80
+    else:
+        eta_g_n=95
+    return (eta_g_n/100)
 
-    This function is carried out when the parameter `eta_turb_values` of an
-    instance of the :class:`~.modelchain.Modelchain` class
-    has been filled in
+def get_turb_param(turb_type,file_turb_eff):
+    r"""
+    Gets the parameters to calculate the turbine efficiency
+    :param turb_type: string
+    Type of turbine
+    :param file_turb_eff: string
+    csv file storing the efficiency parameters. File has to be in data folder
+    :return: 
+    pd.DataFrame
+    """
+    try:
+        df = pd.read_csv(os.path.join(os.path.join(os.path.dirname(__file__), 'data'), file_turb_eff),index_col=0)
+    except IOError:
+        logging.info(
+            'No file %s in data folder' %file_turb_eff)
+        sys.exit()
+    hpp_df = df[df.type == turb_type]
+    if hpp_df.shape[0] == 0:
+        pd.set_option('display.max_rows', len(df))
+        logging.info('Possible types: \n{0}'.format(df.type))
+        pd.reset_option('display.max_rows')
+        sys.exit('Turbine type %s is not in file %s' %(turb_type,file_turb_eff))
+    return hpp_df
 
+def get_eta_gen(load,eta_g_n):
+    r"""
+    Get efficiency of generator based on the part load and the nominal efficiency.
+    Source : "Wahl, Dimensionierung und Abnahme einer Kleinturbine" from PACER
+    :param load: float
+    :param eta_g_n: float
+    :return: 
+    float
+    """
+    if load<0.1:
+        eta_g=0.85*eta_g_n
+    elif load<0.25:
+        eta_g=(0.85+(load-0.1)*0.1/0.15)*eta_g_n
+    elif load<50:
+        eta_g=(0.95+(load-0.25)*0.05/0.25)*eta_g_n
+    else:
+        eta_g=eta_g_n
+    return eta_g
+
+def run(hpp,dV,file_turb_eff):
+    r"""
+    Calculates the plant power output.
+    
     Parameters
     ----------
-    Q : pandas.Series or array
-        Water flow in m3/s.
-    W : pandas.Series or array
-        Water level in m.
     hpp : instance of the :class:`~.hydropower_plant.HydropowerPlant` class
         Specifications of the hydropower plant
-    rho : float
-        Density of water in kg/m³.
-    g : float
-        Acceleration of gravity in m/s2.    
-
+    dV : pandas.Series
+        Water flow in m3/s.
 
     Returns
     -------
@@ -43,17 +96,17 @@ def output_from_eta_values(Q, W, hpp,rho,g):
     -----
     The following equation is used [1]_:
 
-    .. math:: P=\eta_{turbine}\cdot\eta_{generator}\cdot g\cdot\rho_{water}\cdot min(Q,Q_{n})\cdot(H_{n}+W_{n}-W) 
+    .. math:: P=\eta_{turbine}\cdot\eta_{generator}\cdot g\cdot\rho_{water}\cdot min(dV,dV_{n})\cdot h_{n}
 
 
     with:
         P: power [W], :math:`\rho_{water}`: density [kg/m³], g: standard gravity [m/s2],
-        Q: water flow [m3/s], W: water level [m], Q_{n}: nominal water flow [m3/s], W_{n}:n ominal water level [m], 
-	H_{n}: nominal head of water [m], \eta_{turbine}: efficiency of the turbine [], \eta_{generator}: efficiency of the generator []
+        dV: water flow [m3/s], dV_{n}: nominal water flow [m3/s], h_{n}: nominal head of water [m], 
+        \eta_{turbine}: efficiency of the turbine [], \eta_{generator}: efficiency of the generator []
 
     It is assumed that the efficiency for water flows above the maximum
     water flow given in the efficiency curve is the nominal efficiency 
-    (the water surplus will be drained over the dam and impact the water head and thus the power output)
+    (the water surplus will be drained over the dam)
 
     References
     ----------
@@ -63,76 +116,21 @@ def output_from_eta_values(Q, W, hpp,rho,g):
 
     """
 
-    load = Q/hpp.Q_n
-    power_output = pd.Series('',index=load.index,name='feedin_hydropower_plant')
-    eta_turb = np.interp(load, hpp.eta_turb_values.index, hpp.eta_turb_values.eta,
-                          left=0, right=0)
-    for timestep in load.index:
-        power_output[timestep] = eta_turb[load[timestep]] * hpp.eta_gen * g * rho * min(Q[timestep],hpp.Q_n) * (hpp.H_n+hpp.W_n-W[timestep])
+    load = pd.Series(data=dV.dV.values/hpp.dV_n,index=dV.index)
+    power_output = pd.Series('',index=dV.index,name='feedin_hydropower_plant')
+    eta_g_n=get_eta_g_n(hpp.P_n)
+    turbine_parameters=get_turb_param(hpp.turb_type,file_turb_eff)
 
-    # Set index for time series
-    try:
-        series_index = Q.index
-    except AttributeError:
-        series_index = range(1, len(power_output)+1)
-    power_output = pd.Series(data=power_output, index=series_index,
-                             name='feedin_hydropower_plant')
-    return power_output
-
-
-def output_from_parameters(Q, W, hpp,rho,g):
-    r"""
-    Calculates the turbine power output using turbine efficiency values calculated from parameters.
-
-    This function is carried out when the parameter `eta_turb_values` of an
-    instance of the :class:`~.modelchain.Modelchain` class
-    has not been filled in
-
-    Parameters
-    ----------
-    Q : pandas.Series or array
-        Water flow in m3/s.
-    W : pandas.Series or array
-        Water level in m.
-    hpp : instance of the :class:`~.hydropower_plant.HydropowerPlant` class
-        Specifications of the hydropower plant
-    rho : float
-        Density of water in kg/m³.
-    g : float
-        Acceleration of gravity in m/s2.   
-
-    Returns
-    -------
-    power_output : pandas.Series
-        Electrical power output of the hydropower plant in W.
-
-    Notes
-    -------
-    It is assumed that the efficiency for water flows above the maximum
-    water flow given in the efficiency curve is the nominal efficiency 
-    (the water surplus will be drained over the dam and impact the water head and thus the power output)
-
-    See :py:func:`output_from_eta_values` for further information on how the power values
-    are calculated
-
-    """
-
-    load = Q/hpp.Q_n
-    power_output = pd.Series('',index=load.index,name='feedin_hydropower_plant')
-    for timestep in load.index:
-        if load[timestep]<hpp.turbine_parameters["load_min"][0]:
-            eta_turb=0
-            power_output[timestep] = eta_turb * hpp.eta_gen * g * rho* min(Q[timestep], hpp.Q_n) * (hpp.H_n + hpp.W_n - W[timestep])
+    for timestep in dV.index:
+        if load[timestep]<turbine_parameters["load_min"][0]:
+            power_output[timestep] = 0
         elif load[timestep]>=1:
-            eta_turb=hpp.turbine_parameters["eta_n"][0]
-            print(hpp.turbine_parameters["eta_n"][0])
-            power_output[timestep] = eta_turb * hpp.eta_gen * g * rho* min(Q[timestep], hpp.Q_n) * (hpp.H_n + hpp.W_n - W[timestep])
+            eta_turb=turbine_parameters["eta_n"][0]
+            power_output[timestep] = eta_turb * eta_g_n * 9.81 * 1000 * hpp.dV_n * hpp.h_n
         else:
-            eta_turb=(load[timestep]-hpp.turbine_parameters["load_min"][0])/(hpp.turbine_parameters["a1"][0]+hpp.turbine_parameters["a2"][0]*(load[timestep]-hpp.turbine_parameters["load_min"][0])+hpp.turbine_parameters["a3"][0]*(load[timestep]-hpp.turbine_parameters["load_min"][0])*(load[timestep]-hpp.turbine_parameters["load_min"][0]))
-        power_output[timestep] = eta_turb * hpp.eta_gen * g * rho* min(Q[timestep], hpp.Q_n) * (
-        hpp.H_n + hpp.W_n - W[timestep])
-    #power_output = eta_turb*hpp.eta_gen*g*rho*min(Q,hpp.Q_n)*(hpp.H_n+hpp.W_n-W)
-    # Set index for time series
+            eta_turb=(load[timestep]-turbine_parameters["load_min"][0])/(turbine_parameters["a1"][0]+turbine_parameters["a2"][0]*(load[timestep]-turbine_parameters["load_min"][0])+turbine_parameters["a3"][0]*(load[timestep]-turbine_parameters["load_min"][0])*(load[timestep]-turbine_parameters["load_min"][0]))
+            eta_gen=get_eta_gen(load[timestep],eta_g_n)
+            power_output[timestep] = eta_turb * eta_gen * 9.81 * 1000 * min(dV.dV[timestep], hpp.dV_n) * hpp.h_n
 
     return power_output
 
