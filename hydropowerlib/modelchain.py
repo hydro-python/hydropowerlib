@@ -13,6 +13,7 @@ import sys
 import os
 import pandas as pd
 import numpy as np
+import datetime
 from git_repos.hydropowerlib.hydropowerlib import power_output
 
 
@@ -75,7 +76,7 @@ class Modelchain(object):
 
         if self.check_feasibility() is False:
             logging.info(
-                'The input data is not sufficient for turbine %s' %self.HPP.id)
+                'The input data is not sufficient for plant %s' %self.HPP.id)
             sys.exit()
 
         if self.HPP.dV_rest is None :
@@ -117,7 +118,13 @@ class Modelchain(object):
         if self.dV_hist is None :
             return 0
         else :
-            dV_mean = self.dV_hist.groupby([self.dV_hist.index.month, self.dV_hist.index.day]).mean()
+            recent=self.dV_hist.sort_index().iloc[self.dV_hist.count()-1].index[0]
+            try:
+                ten_years = datetime.datetime(recent.year - 10, recent.month, recent.day)+datetime.timedelta(days=1)
+            except ValueError:
+                ten_years = datetime.datetime(recent.year - 10, recent.month, recent.day - 1)+datetime.timedelta(days=1)
+            dV_ten_years=self.dV_hist.sort_index().loc[ten_years:recent]
+            dV_mean = dV_ten_years.groupby([dV_ten_years.index.month, dV_ten_years.index.day]).mean()
             mean_year = pd.Series(dV_mean['dV'].values, index=np.arange(1, 367, 1))
             mean_fdc = pd.Series(mean_year.sort_values(ascending=False).values, index=mean_year.index)
             dV_347 = mean_fdc.loc[347]
@@ -140,14 +147,20 @@ class Modelchain(object):
     def get_dV_n(self):
         r"""
         Get value for dV_n, the nominal water flow through the turbine. 
-        dV_n is calculated from the flow duration curve over several years, after subtracting dV_rest.
+        If P_n and h_n are known, dV_n is calculated through equation P_n=h_n*dV_n*g*rho*eta_g_n*eta_t_n
+        Where g=9.81 m/s², rho=1000 kg/m³, eta_g_n (nominal generator efficiency)=0.95 and 
+        eta_t_n (nominal turbine efficiency)=0.9
+        Otherwise dV_n is calculated from the flow duration curve over several years, after subtracting dV_rest.
         It is the water flow reached or exceeded 20% of the time.
         :return: 
         float
         """
-        fdc = pd.Series(self.dV_hist.sort_values(by='dV', ascending=False).dV.values - self.HPP.dV_rest,
+        if self.HPP.h_n is not None and self.HPP.P_n is not None:
+            return self.HPP.P_n/(self.HPP.h_n*9.81*1000*0.9*0.95)
+        else:
+            fdc = pd.Series(self.dV_hist.sort_values(by='dV', ascending=False).dV.values - self.HPP.dV_rest,
                         index=np.arange(1, 100, 99 / self.dV_hist.count()))
-        return np.interp(20,fdc.index,fdc.values)
+            return np.interp(20,fdc.index,fdc.values)
 
 
     def get_P_n(self):
