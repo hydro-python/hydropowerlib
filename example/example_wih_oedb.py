@@ -32,7 +32,7 @@ try:
     WITH reg_TH AS (SELECT reg_on_wg.id, reg_on_wg.dp_geom, reg_on_wg.wg_id
     FROM supply.fred_dp_res_powerplant_hydro_on_wg_mview reg_on_wg, orig_vg250.vg250_2_lan bl
     WHERE st_contains(st_TRANSFORM(bl.geom,3035),ST_TRANSFORM(reg_on_wg.dp_geom,3035)) AND bl.gen='Thüringen')
-    SELECT reg_TH.id,reg_TH.dp_geom,reg_TH.wg_id,reg.start_up_date, reg.electrical_capacity
+    SELECT reg_TH.id,reg_TH.wg_id, reg.electrical_capacity
     FROM reg_TH, supply.ego_renewable_power_plants_germany_hydro_mview reg
     WHERE reg_TH.id=reg.id
     """
@@ -82,11 +82,12 @@ try:
             energy=energy+(my_hpp.power_output.sum()*24)
             plants_df.loc[my_hpp.id] = {'P_n': my_hpp.P_n, 'dV_n': my_hpp.dV_n, 'h_n': my_hpp.h_n, 'dV_rest': my_hpp.dV_rest,
                                      'turb_type': my_hpp.turb_type, 'simu': simu,
-                                     'power_output': my_hpp.power_output}
+                                     'power_output': my_hpp.power_output.values}
         else:
             plants_df.loc[plant_reg.loc[i,'id']] = {'P_n': plant_reg.loc[i,'electrical_capacity']*1000, 'dV_n': None, 'h_n': None,
                                         'dV_rest': None, 'turb_type': None, 'simu': simu, 'power_output': None}
 
     logging.info('\t%d from %d plants simulated \n\t\t\tEnergy produced : %d GWh' %(plants_with_ts,len(plants_df.index),energy/1000000000))
+    #plants_df.to_csv('example_oedb.csv', index=True)
 finally:
     conn_oedb.close()
