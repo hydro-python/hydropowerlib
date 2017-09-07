@@ -74,6 +74,8 @@ class Modelchain(object):
         self.file_turb_eff = file_turb_eff
         self.file_turb_graph = file_turb_graph
 
+        logging.info(
+            'Initializing plant %s' % self.HPP.id)
         if self.check_feasibility() is False:
             logging.info(
                 'The input data is not sufficient for plant %s' %self.HPP.id)
@@ -81,19 +83,16 @@ class Modelchain(object):
 
         if self.HPP.dV_rest is None :
             HPP.dV_rest=self.get_dV_rest()
-
         if self.HPP.dV_n is None:
             HPP.dV_n = self.get_dV_n()
-
         if self.HPP.P_n is None:
             HPP.P_n = self.get_P_n()
-
         if self.HPP.h_n is None:
             HPP.h_n = self.get_h_n()
-
         if self.HPP.turb_type is None:
             HPP.turb_type = self.get_turb_type()
-
+        logging.info(
+            '\tNominal water flow \t: %s m3/s \n\t\t\tNominal head \t\t: %s m \n\t\t\tNominal power \t\t: %s W \n\t\t\tResidual water flow : %s m3/s \n\t\t\tTurbine type \t\t: %s' % (self.HPP.dV_n,self.HPP.h_n,self.HPP.P_n,self.HPP.dV_rest,self.HPP.turb_type))
 
     def check_feasibility(self):
         r"""
@@ -125,20 +124,20 @@ class Modelchain(object):
                 ten_years = datetime.datetime(recent.year - 10, recent.month, recent.day - 1)+datetime.timedelta(days=1)
             dV_ten_years=self.dV_hist.sort_index().loc[ten_years:recent]
             dV_mean = dV_ten_years.groupby([dV_ten_years.index.month, dV_ten_years.index.day]).mean()
-            mean_year = pd.Series(dV_mean['dV'].values, index=np.arange(1, 367, 1))
+            mean_year = pd.Series(dV_mean['dV'].values, index=np.arange(1, len(dV_mean['dV'].values)+1, 1))
             mean_fdc = pd.Series(mean_year.sort_values(ascending=False).values, index=mean_year.index)
             dV_347 = mean_fdc.loc[347]
-            if dV_347 < 0.06:
+            if dV_347 <= 0.06:
                 return 0.05
-            elif dV_347 < 0.16:
-                return 0.05 + (dV_347 - 0.6) * 8 / 10
-            elif dV_347 < 0.5:
-                return 0.130 + (dV_347 - 0.5) * 4.4 / 10
-            elif dV_347 < 2.5:
-                return 0.28 + (dV_347 - 0.13) * 31 / 100
-            elif dV_347 < 10:
+            elif dV_347 <= 0.16:
+                return 0.05 + (dV_347 - 0.06) * 8 / 10
+            elif dV_347 <= 0.5:
+                return 0.130 + (dV_347 - 0.16) * 4.4 / 10
+            elif dV_347 <= 2.5:
+                return 0.28 + (dV_347 - 0.5) * 31 / 100
+            elif dV_347 <= 10:
                 return 0.9 + (dV_347 - 2.5) * 21.3 / 100
-            elif dV_347 < 60:
+            elif dV_347 <= 60:
                 return 2.5 + (dV_347 - 10) * 150 / 1000
             else:
                 return 10
@@ -159,7 +158,7 @@ class Modelchain(object):
             return self.HPP.P_n/(self.HPP.h_n*9.81*1000*0.9*0.95)
         else:
             fdc = pd.Series(self.dV_hist.sort_values(by='dV', ascending=False).dV.values - self.HPP.dV_rest,
-                        index=np.arange(1, 100, 99 / self.dV_hist.count()))
+                        index=np.linspace(0, 100, num= self.dV_hist.count()))
             return np.interp(20,fdc.index,fdc.values)
 
 
@@ -278,7 +277,7 @@ class Modelchain(object):
                 return turbine_type
                 break
 
-        logging.info('Turbine type could not be defined for plant %s. Dummy type used' %self.HPP.id)
+        #logging.info('Turbine type could not be defined for plant %s. Dummy type used' %self.HPP.id)
         return 'dummy'
 
 
