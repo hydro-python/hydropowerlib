@@ -9,9 +9,9 @@ import os
 import logging
 import sys
 
-
 __copyright__ = "Copyright oemof developer group"
 __license__ = "GPLv3"
+
 
 def get_eta_g_n(P_n):
     r"""
@@ -21,19 +21,20 @@ def get_eta_g_n(P_n):
     :return: 
     float
     """
-    if P_n<1000:
-        eta_g_n=80
-    elif P_n<5000:
-        eta_g_n=80+(P_n-1000)/1000*5/4
-    elif P_n<20000:
-        eta_g_n=85+(P_n-5000)/1000*5/15
-    elif P_n<100000:
-        eta_g_n=90+(P_n-20000)/1000*5/80
+    if P_n < 1000:
+        eta_g_n = 80
+    elif P_n < 5000:
+        eta_g_n = 80 + (P_n - 1000) / 1000 * 5 / 4
+    elif P_n < 20000:
+        eta_g_n = 85 + (P_n - 5000) / 1000 * 5 / 15
+    elif P_n < 100000:
+        eta_g_n = 90 + (P_n - 20000) / 1000 * 5 / 80
     else:
-        eta_g_n=95
-    return (eta_g_n/100)
+        eta_g_n = 95
+    return (eta_g_n / 100)
 
-def get_turb_param(turb_type,file_turb_eff):
+
+def get_turb_param(turb_type, file_turb_eff):
     r"""
     Gets the parameters to calculate the turbine efficiency
     :param turb_type: string
@@ -44,20 +45,21 @@ def get_turb_param(turb_type,file_turb_eff):
     pd.DataFrame
     """
     try:
-        df = pd.read_csv(os.path.join(os.path.join(os.path.dirname(__file__), 'data'), file_turb_eff),index_col=0)
+        df = pd.read_csv(os.path.join(os.path.join(os.path.dirname(__file__), 'data'), file_turb_eff), index_col=0)
     except IOError:
         logging.info(
-            'No file %s in data folder' %file_turb_eff)
+            'No file %s in data folder' % file_turb_eff)
         sys.exit()
     hpp_df = df[df.type == turb_type]
     if hpp_df.shape[0] == 0:
         pd.set_option('display.max_rows', len(df))
         logging.info('Possible types: \n{0}'.format(df.type))
         pd.reset_option('display.max_rows')
-        sys.exit('Turbine type %s is not in file %s' %(turb_type,file_turb_eff))
+        sys.exit('Turbine type %s is not in file %s' % (turb_type, file_turb_eff))
     return hpp_df
 
-def get_eta_gen(load,eta_g_n):
+
+def get_eta_gen(load, eta_g_n):
     r"""
     Get efficiency of generator based on the part load and the nominal efficiency.
     Source : "Wahl, Dimensionierung und Abnahme einer Kleinturbine" from PACER
@@ -66,17 +68,18 @@ def get_eta_gen(load,eta_g_n):
     :return: 
     float
     """
-    if load<0.1:
-        eta_g=0.85*eta_g_n
-    elif load<0.25:
-        eta_g=(0.85+(load-0.1)*0.1/0.15)*eta_g_n
-    elif load<50:
-        eta_g=(0.95+(load-0.25)*0.05/0.25)*eta_g_n
+    if load < 0.1:
+        eta_g = 0.85 * eta_g_n
+    elif load < 0.25:
+        eta_g = (0.85 + (load - 0.1) * 0.1 / 0.15) * eta_g_n
+    elif load < 50:
+        eta_g = (0.95 + (load - 0.25) * 0.05 / 0.25) * eta_g_n
     else:
-        eta_g=eta_g_n
+        eta_g = eta_g_n
     return eta_g
 
-def run(hpp,dV,file_turb_eff):
+
+def run(hpp, dV, file_turb_eff):
     r"""
     Calculates the plant power output.
     
@@ -116,21 +119,23 @@ def run(hpp,dV,file_turb_eff):
 
     """
 
-    load = pd.Series(data=dV.dV.values/hpp.dV_n,index=dV.index)
-    power_output = pd.Series('',index=dV.index,name='feedin_hydropower_plant')
-    eta_g_n=get_eta_g_n(hpp.P_n)
-    turbine_parameters=get_turb_param(hpp.turb_type,file_turb_eff)
+    load = pd.Series(data=dV.dV.values / hpp.dV_n, index=dV.index)
+    power_output = pd.Series('', index=dV.index, name='feedin_hydropower_plant')
+    eta_g_n = get_eta_g_n(hpp.P_n)
+    turbine_parameters = get_turb_param(hpp.turb_type, file_turb_eff)
 
     for timestep in dV.index:
-        if load[timestep]<turbine_parameters["load_min"][0]:
+        if load[timestep] < turbine_parameters.load_min.values[0]:
             power_output[timestep] = 0
-        elif load[timestep]>=1:
-            eta_turb=turbine_parameters["eta_n"][0]
-            power_output[timestep] = eta_turb * eta_g_n * 9.81 * 1000 * hpp.dV_n * hpp.h_n
+        elif load[timestep] >= 1:
+            power_output[timestep] = hpp.P_n
         else:
-            eta_turb=(load[timestep]-turbine_parameters["load_min"][0])/(turbine_parameters["a1"][0]+turbine_parameters["a2"][0]*(load[timestep]-turbine_parameters["load_min"][0])+turbine_parameters["a3"][0]*(load[timestep]-turbine_parameters["load_min"][0])*(load[timestep]-turbine_parameters["load_min"][0]))
-            eta_gen=get_eta_gen(load[timestep],eta_g_n)
-            power_output[timestep] = eta_turb * eta_gen * 9.81 * 1000 * min(dV.dV[timestep], hpp.dV_n) * hpp.h_n
+            eta_turb = (load[timestep] - turbine_parameters.load_min.values[0]) / (
+            turbine_parameters.a1.values[0] + turbine_parameters.a2.values[0] * (
+            load[timestep] - turbine_parameters.load_min.values[0]) + turbine_parameters.a3.values[0] * (
+            load[timestep] - turbine_parameters.load_min.values[0]) * (load[timestep] - turbine_parameters.load_min.values[0]))
+            eta_gen = get_eta_gen(load[timestep], eta_g_n)
+            power_output[timestep] = eta_turb * eta_gen * 9.81 * 1000 * dV.dV[timestep] * hpp.h_n
 
     return power_output
 
