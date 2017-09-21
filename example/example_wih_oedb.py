@@ -39,7 +39,7 @@ try:
     plant_reg = pd.read_sql(sql_read, conn_oedb)
 
     # Feel free to chage this to try another year
-    year_to_simulate=2009
+    year_to_simulate=2008
 
     # Counts the plants simulated = the plants for which runoff data from the year to simulate was available
     plants_with_ts=0
@@ -48,8 +48,8 @@ try:
     energy=0
 
     # DataFrame of all plants
-    plants_df=pd.DataFrame(columns=['P_n','dV_n','h_n','dV_rest','turb_type','simu','power_output'])
-    plants_df=plants_df.astype(dtype={'P_n':float,'dV_n':float,'h_n':float,'dV_rest':float,'turb_type':str,'simu':bool,'power_output':pd.Series})
+    plants_df=pd.DataFrame(columns=['P_n','dV_n','h_n','dV_res','turb_type','simu','prod','power_output'])
+    plants_df=plants_df.astype(dtype={'P_n':float,'dV_n':float,'h_n':float,'dV_res':float,'turb_type':str,'simu':bool,'prod':float,'power_output':pd.Series})
 
     for i in plant_reg.index:
         # Read the runoff time series of the raster cell in which the plant is (one time series per year)
@@ -80,12 +80,12 @@ try:
             my_mc.run_model()
             power_outputs[plant_reg.loc[i,'id']]=my_hpp.power_output
             energy=energy+(my_hpp.power_output.sum()*24)
-            plants_df.loc[my_hpp.id] = {'P_n': my_hpp.P_n, 'dV_n': my_hpp.dV_n, 'h_n': my_hpp.h_n, 'dV_rest': my_hpp.dV_rest,
-                                     'turb_type': my_hpp.turb_type, 'simu': simu,
+            plants_df.loc[my_hpp.id] = {'P_n': my_hpp.P_n, 'dV_n': my_hpp.dV_n, 'h_n': my_hpp.h_n, 'dV_res': my_hpp.dV_res,
+                                     'turb_type': my_hpp.turb_type, 'simu': simu,'prod':my_hpp.power_output.sum(),
                                      'power_output': my_hpp.power_output.values}
         else:
             plants_df.loc[plant_reg.loc[i,'id']] = {'P_n': plant_reg.loc[i,'electrical_capacity']*1000, 'dV_n': None, 'h_n': None,
-                                        'dV_rest': None, 'turb_type': None, 'simu': simu, 'power_output': None}
+                                        'dV_res': None, 'turb_type': None, 'simu': simu, 'prod':0,'power_output': None}
 
     logging.info('\t%d from %d plants simulated \n\t\t\tEnergy produced : %d GWh' %(plants_with_ts,len(plants_df.index),energy/1000000000))
     #plants_df.to_csv('example_oedb.csv', index=True)

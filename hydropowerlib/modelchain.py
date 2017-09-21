@@ -81,8 +81,8 @@ class Modelchain(object):
                 'The input data is not sufficient for plant %s' %self.HPP.id)
             sys.exit()
 
-        if self.HPP.dV_rest is None :
-            HPP.dV_rest=self.get_dV_rest()
+        if self.HPP.dV_res is None :
+            HPP.dV_res=self.get_dV_res()
         if self.HPP.dV_n is None:
             HPP.dV_n = self.get_dV_n()
         if self.HPP.P_n is None:
@@ -92,7 +92,7 @@ class Modelchain(object):
         if self.HPP.turb_type is None:
             HPP.turb_type = self.get_turb_type()
         logging.info(
-            '\tNominal water flow \t: %s m3/s \n\t\t\tNominal head \t\t: %s m \n\t\t\tNominal power \t\t: %s W \n\t\t\tResidual water flow : %s m3/s \n\t\t\tTurbine type \t\t: %s' % (self.HPP.dV_n,self.HPP.h_n,self.HPP.P_n,self.HPP.dV_rest,self.HPP.turb_type))
+            '\tNominal water flow \t: %s m3/s \n\t\t\tNominal head \t\t: %s m \n\t\t\tNominal power \t\t: %s W \n\t\t\tResidual water flow : %s m3/s \n\t\t\tTurbine type \t\t: %s' % (self.HPP.dV_n,self.HPP.h_n,self.HPP.P_n,self.HPP.dV_res,self.HPP.turb_type))
 
     def check_feasibility(self):
         r"""
@@ -106,11 +106,11 @@ class Modelchain(object):
         return (((self.HPP.h_n is not None) and (self.HPP.P_n is not None)) or (((self.HPP.h_n is not None) or (self.HPP.P_n is not None)) and (( self.dV_hist is not None) or (self.HPP.dV_n is not None))))
 
 
-    def get_dV_rest(self):
+    def get_dV_res(self):
         r"""
-        Get value for dV_rest. dV_rest is calculated from the mean flow duration curve over several years.
-        The mean flow duration curve is obtained through dV_hist. If dV_hist is not given, dV_rest is set to 0.
-         Source for calculation of dV_rest : "Wahl, Dimensionierung und Abnahme einer Kleinturbine" from PACER
+        Get value for dV_res. dV_res is calculated from the mean flow duration curve over several years.
+        The mean flow duration curve is obtained through dV_hist. If dV_hist is not given, dV_res is set to 0.
+         Source for calculation of dV_res : "Wahl, Dimensionierung und Abnahme einer Kleinturbine" from PACER
         :return:
         float
         """
@@ -149,7 +149,7 @@ class Modelchain(object):
         If P_n and h_n are known, dV_n is calculated through equation P_n=h_n*dV_n*g*rho*eta_g_n*eta_t_n
         Where g=9.81 m/s², rho=1000 kg/m³, eta_g_n (nominal generator efficiency)=0.95 and 
         eta_t_n (nominal turbine efficiency)=0.9
-        Otherwise dV_n is calculated from the flow duration curve over several years, after subtracting dV_rest.
+        Otherwise dV_n is calculated from the flow duration curve over several years, after subtracting dV_res.
         It is the water flow reached or exceeded 20% of the time.
         :return: 
         float
@@ -157,7 +157,7 @@ class Modelchain(object):
         if self.HPP.h_n is not None and self.HPP.P_n is not None:
             return self.HPP.P_n/(self.HPP.h_n*9.81*1000*0.9*0.95)
         else:
-            fdc = pd.Series(self.dV_hist.sort_values(by='dV', ascending=False).dV.values - self.HPP.dV_rest,
+            fdc = pd.Series(self.dV_hist.sort_values(by='dV', ascending=False).dV.values - self.HPP.dV_res,
                         index=np.linspace(0, 100, num= self.dV_hist.count()))
             return np.interp(20,fdc.index,fdc.values)
 
@@ -288,4 +288,4 @@ class Modelchain(object):
         pandas.DataFrame
         """
 
-        self.HPP.power_output = power_output.run(self.HPP, self.dV-self.HPP.dV_rest,self.file_turb_eff)
+        self.HPP.power_output = power_output.run(self.HPP, self.dV-self.HPP.dV_res,self.file_turb_eff)

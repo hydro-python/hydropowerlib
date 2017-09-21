@@ -25,7 +25,7 @@ class HydropowerPlant(object):
         In case of multiple turbines, this is the sum of the nominal inflows in each turbine.
     h_n : float
         Nominal head of water in m.
-    dV_rest : float
+    dV_res : float
         Part of the water flow that cannot be used (fish ladder, compulsory minimal water flow leaving the plant...)
     turb_type : string
         Type of the turbine(s). All turbines of the same plant have to be the same type. 
@@ -43,7 +43,7 @@ class HydropowerPlant(object):
         Nominal water flow entering the plant in m3/s.
     h_n : float
         Nominal head of water in m.
-    dV_rest : float
+    dV_res : float
         Part of the water flow that cannot be used (fish ladder, compulsory minimal water flow leaving the plant...)
     turb_type : string
         Type of the turbine. 
@@ -65,13 +65,13 @@ class HydropowerPlant(object):
 
     """
 
-    def __init__(self,  id,P_n=None, dV_n=None,h_n=None,dV_rest=None,turb_type=None,turb_num=1):
+    def __init__(self,  id,P_n=None, dV_n=None,h_n=None,dV_res=None,turb_type=None,turb_num=1):
 
         self.id=id
         self.P_n = P_n
         self.dV_n = dV_n
         self.h_n = h_n
-        self.dV_rest = dV_rest
+        self.dV_res = dV_res
         self.turb_type = turb_type
         self.turb_num = turb_num
 
