@@ -54,7 +54,7 @@ class HydropowerPlant(object):
 
     Examples
     --------
-    >>> from hydropowerlib.hydropowerlib import hydropower_plant
+    >>> from hydropowerlib import HydropowerPlant
     >>> example_plant = {
     ...    'h_n': 4.23,
     ...    'dV_n': 12,
@@ -65,9 +65,9 @@ class HydropowerPlant(object):
 
     """
 
-    def __init__(self,  id,P_n=None, dV_n=None,h_n=None,dV_res=None,turb_type=None,turb_num=1):
+    def __init__(self, id, P_n=None, dV_n=None, h_n=None, dV_res=None, turb_type=None, turb_num=1):
 
-        self.id=id
+        self.id = id
         self.P_n = P_n
         self.dV_n = dV_n
         self.h_n = h_n

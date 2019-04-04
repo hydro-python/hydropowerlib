@@ -82,7 +82,7 @@ def get_eta_gen(load, eta_g_n):
 def run(hpp, dV, file_turb_eff):
     r"""
     Calculates the plant power output.
-    
+
     Parameters
     ----------
     hpp : instance of the :class:`~.hydropower_plant.HydropowerPlant` class
@@ -104,17 +104,18 @@ def run(hpp, dV, file_turb_eff):
 
     with:
         P: power [W], :math:`\rho_{water}`: density [kg/m³], g: standard gravity [m/s2],
-        dV: water flow [m3/s], dV_{n}: nominal water flow [m3/s], h_{n}: nominal head of water [m], 
-        \eta_{turbine}: efficiency of the turbine [], \eta_{generator}: efficiency of the generator []
+        dV: water flow [m3/s], :math:`dV_{n}`: nominal water flow [m3/s],
+        :math:`h_{n}`: nominal head of water [m], :math:`\eta_{turbine}`: efficiency of the turbine [],
+        :math:`\eta_{generator}`: efficiency of the generator []
 
     It is assumed that the efficiency for water flows above the maximum
-    water flow given in the efficiency curve is the nominal efficiency 
+    water flow given in the efficiency curve is the nominal efficiency
     (the water surplus will be drained over the dam)
 
     References
     ----------
     .. [1] Quaschning, V.: "Regenerative Energiesysteme". 9. Auflage, München,
-            Hanser, 2015, page 333
+           Hanser, 2015, page 333
 
 
     """

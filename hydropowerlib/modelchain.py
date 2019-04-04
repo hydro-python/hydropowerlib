@@ -14,11 +14,14 @@ import os
 import pandas as pd
 import numpy as np
 import datetime
-from git_repos.hydropowerlib.hydropowerlib import power_output
+
+from . import power_output
+
+logger = logging.getLogger(__name__)
 
 
 class Modelchain(object):
-    r"""Model to determine the output of a hydropower plant
+    """Model to determine the output of a hydropower plant
 
     Parameters
     ----------
@@ -30,9 +33,9 @@ class Modelchain(object):
     dV_hist : pandas.DataFrame
         Containing DateTime index and column with water flow `dV` in m3/s over several past years.
         Used to extrapolate the missing values about the plant.
-    file_turb_eff : string 
+    file_turb_eff : string
         Name of the file containing parameters about the turbine efficiency.
-    file_turb_graph : 
+    file_turb_graph :
         Name of the file containing the characteristic diagrams.
 
     Attributes
@@ -45,15 +48,15 @@ class Modelchain(object):
     dV_hist : pandas.DataFrame
         Containing DateTime index and column with water flow `dV` in m3/s over several past years.
         Used to extrapolate the missing values about the plant.
-    file_turb_eff : string 
+    file_turb_eff : string
         Name of the file containing parameters about the turbine efficiency.
-    file_turb_graph : 
+    file_turb_graph :
         Name of the file containing the characteristic diagrams.
 
     Examples
     --------
-    >>> from hydropowerlib.hydropowerlib import modelchain
-    >>> from hydropowerlib.hydropowerlib import hydropower_plant
+    >>> from hydropowerlib import modelchain
+    >>> from hydropowerlib import hydropower_plant
     >>> example_plant = {
     ...    'H_n': 4.23,
     ...    'Q_n': 12,
@@ -66,20 +69,19 @@ class Modelchain(object):
 
     """
 
-    def __init__(self, HPP,dV,dV_hist=None,file_turb_eff='turbine_type.csv',file_turb_graph='charac_diagrams.csv'):
+    def __init__(self, HPP, dV, dV_hist=None, file_turb_eff='turbine_type.csv', file_turb_graph='charac_diagrams.csv'):
 
         self.HPP = HPP
-        self.dV=dV
+        self.dV = dV
         self.dV_hist = dV_hist
         self.file_turb_eff = file_turb_eff
         self.file_turb_graph = file_turb_graph
 
-        logging.info(
+        logger.info(
             'Initializing plant %s' % self.HPP.id)
         if self.check_feasibility() is False:
-            logging.info(
-                'The input data is not sufficient for plant %s' %self.HPP.id)
-            sys.exit()
+            logger.error('The input data is not sufficient for plant %s' % self.HPP.id)
+            raise RuntimeError('The input data is not sufficient for plant %s' % self.HPP.id)
 
         if self.HPP.dV_res is None :
             HPP.dV_res=self.get_dV_res()
@@ -91,33 +93,46 @@ class Modelchain(object):
             HPP.h_n = self.get_h_n()
         if self.HPP.turb_type is None:
             HPP.turb_type = self.get_turb_type()
-        logging.info(
+        logger.info(
             '\tNominal water flow \t: %s m3/s \n\t\t\tNominal head \t\t: %s m \n\t\t\tNominal power \t\t: %s W \n\t\t\tResidual water flow : %s m3/s \n\t\t\tTurbine type \t\t: %s' % (self.HPP.dV_n,self.HPP.h_n,self.HPP.P_n,self.HPP.dV_res,self.HPP.turb_type))
 
     def check_feasibility(self):
-        r"""
-        Test if the input data is sufficient to simulate the plant.
-        The simulation is feasible if two parameters among (dV_n, h_n and P_n) are known. 
-        If dV_n is not known, it can be extrapolated from dv_hist
-        The logical expression verifying the feasibility is (h_n and P_n) or ((h_n or P_n) and (dV_hist or dV_n))
-        :return: 
-        boolean : True if sufficient
         """
-        return (((self.HPP.h_n is not None) and (self.HPP.P_n is not None)) or (((self.HPP.h_n is not None) or (self.HPP.P_n is not None)) and (( self.dV_hist is not None) or (self.HPP.dV_n is not None))))
+        Test if the input data is sufficient to simulate the plant
+
+        The simulation is feasible if two parameters among `dV_n`, `h_n` and
+        `P_n` are known. If dV_n is not known, it can be extrapolated from
+        dV_hist.
+
+        The logical expression verifying the feasibility is
+        `(h_n and P_n) or ((h_n or P_n) and (dV_hist or dV_n))`
+
+        """
+        return (((self.HPP.h_n is not None) and (self.HPP.P_n is not None)) or
+                (((self.HPP.h_n is not None) or (self.HPP.P_n is not None)) and
+                 ((self.dV_hist is not None) or (self.HPP.dV_n is not None))))
 
 
     def get_dV_res(self):
-        r"""
-        Get value for dV_res. dV_res is calculated from the mean flow duration curve over several years.
-        The mean flow duration curve is obtained through dV_hist. If dV_hist is not given, dV_res is set to 0.
-         Source for calculation of dV_res : "Wahl, Dimensionierung und Abnahme einer Kleinturbine" from PACER
-        :return:
-        float
+        """
+        Get value for dV_res
+
+        dV_res is calculated from the mean flow duration curve over several
+        years. The mean flow duration curve is obtained through dV_hist. If
+        dV_hist is not given, dV_res is set to 0.
+
+        Returns
+        -------
+        dV_res : float
+
+        References
+        ----------
+        "Wahl, Dimensionierung und Abnahme einer Kleinturbine" from PACER
         """
         if self.dV_hist is None :
             return 0
         else :
-            recent=self.dV_hist.sort_index().iloc[self.dV_hist.count()-1].index[0]
+            recent = self.dV_hist.sort_index().iloc[self.dV_hist.count()-1].index[0]
             try:
                 ten_years = datetime.datetime(recent.year - 10, recent.month, recent.day)+datetime.timedelta(days=1)
             except ValueError:
@@ -144,56 +159,79 @@ class Modelchain(object):
 
 
     def get_dV_n(self):
-        r"""
-        Get value for dV_n, the nominal water flow through the turbine. 
-        If P_n and h_n are known, dV_n is calculated through equation P_n=h_n*dV_n*g*rho*eta_g_n*eta_t_n
-        Where g=9.81 m/s², rho=1000 kg/m³, eta_g_n (nominal generator efficiency)=0.95 and 
-        eta_t_n (nominal turbine efficiency)=0.9
-        Otherwise dV_n is calculated from the flow duration curve over several years, after subtracting dV_res.
-        It is the water flow reached or exceeded 20% of the time.
-        :return: 
-        float
+        """
+        Get value for dV_n, the nominal water flow through the turbine
+
+        If P_n and h_n are known, dV_n is calculated through equation
+        P_n=h_n*dV_n*g*rho*eta_g_n*eta_t_n Where g=9.81 m/s², rho=1000 kg/m³,
+        eta_g_n (nominal generator efficiency)=0.95 and eta_t_n (nominal
+        turbine efficiency)=0.9 Otherwise dV_n is calculated from the flow
+        duration curve over several years, after subtracting dV_res. It is the
+        water flow reached or exceeded 20% of the time.
+
+        Returns
+        -------
+        dV_n : float
         """
         if self.HPP.h_n is not None and self.HPP.P_n is not None:
             return self.HPP.P_n/(self.HPP.h_n*9.81*1000*0.9*0.95)
         else:
             fdc = pd.Series(self.dV_hist.sort_values(by='dV', ascending=False).dV.values - self.HPP.dV_res,
-                        index=np.linspace(0, 100, num= self.dV_hist.count()))
-            return np.interp(20,fdc.index,fdc.values)
+                            index=np.linspace(0, 100, num= self.dV_hist.count()))
+            return np.interp(20, fdc.index, fdc.values)
 
 
     def get_P_n(self):
-        r"""
-        Get value for P_n through equation P_n=h_n*dV_n*g*rho*eta_g_n*eta_t_n
-        Where g=9.81 m/s², rho=1000 kg/m³
-        eta_g_n (nominal generator efficiency)=0.95 and eta_t_n (nominal turbine efficiency)=0.9
-        :return: 
-        float
+        """
+        Get value for P_n
+
+        P_n = h_n*dV_n*g*rho*eta_g_n*eta_t_n
+
+        Where g=9.81 m/s², rho=1000 kg/m³,
+              eta_g_n=0.95 (nominal generator efficiency) and
+              eta_t_n (nominal turbine efficiency)=0.9
+
+        Returns
+        -------
+        P_n : float
         """
         return self.HPP.h_n*self.HPP.dV_n*9.81*1000*0.9*0.95
 
 
     def get_h_n(self):
         r"""
-        Get value for h_n through equation P_n=h_n*dV_n*g*rho*eta_g_n*eta_t_n
-        Where g=9.81 m/s², rho=1000 kg/m³
-        eta_g_n (nominal generator efficiency)=0.95 and eta_t_n (nominal turbine efficiency)=0.9
-        :return: 
-        float
+        Get value for h_n
+
+        P_n = h_n*dV_n*g*rho*eta_g_n*eta_t_n
+
+        Where g=9.81 m/s², rho=1000 kg/m³,
+              eta_g_n (nominal generator efficiency)=0.95 and
+              eta_t_n (nominal turbine efficiency)=0.9
+
+        Returns
+        -------
+        h_n : float
         """
         return self.HPP.P_n/(self.HPP.dV_n*9.81*1000*0.9*0.95)
 
 
     def get_turb_type(self):
-        r"""
-        Fetches type of the requested hydropower turbine by situating it on a h_n/dV_n characteristic diagram of different turbines.
-        The characteristic zones of each turbine are polygons in a dV_n / h_n plan and are defined by their angles.
-        The list of angles for each type of turbine is given in "data/charac_diagrams.csv" and is based on https://de.wikipedia.org/wiki/Wasserturbine#/media/File:Kennfeld.PNG
-        :return: 
+        """
+        Estimate turbine type based h_n/dV_n characteristic diagram
+
+        Fetches type of the requested hydropower turbine by situating it on a
+        h_n/dV_n characteristic diagram of different turbines. The
+        characteristic zones of each turbine are polygons in a dV_n / h_n plan
+        and are defined by their angles.
+
+        The list of angles for each type of turbine is given in
+        "data/charac_diagrams.csv" and is based on
+        https://de.wikipedia.org/wiki/Wasserturbine#/media/File:Kennfeld.PNG
+        :return:
         """
 
         def ccw(A, B, C):
-            r"""
+            """
             Function to check if three points are called counterclockwise or clockwise
             Based on http://bryceboe.com/2006/10/23/line-segment-intersection-algorithm/
             :param A: [float, float]
@@ -202,7 +240,7 @@ class Modelchain(object):
             Coordinates of the second point
             :param C: [float, float]
             Coordinates of the third point
-            :return: 
+            :return:
             True if A, B and C are in counterclockwise order
             False if A, B and C are in clockwise order
             """
@@ -210,7 +248,7 @@ class Modelchain(object):
 
 
         def intersec(A, B, C):
-            r"""
+            """
             Function to determine if the half line defined as y=yA and x>=xA crosses the [BC[ segment
             Based on http://bryceboe.com/2006/10/23/line-segment-intersection-algorithm/
             :param A: [float, float]
@@ -242,7 +280,7 @@ class Modelchain(object):
         try:
             df = pd.read_csv(os.path.join(os.path.join(os.path.dirname(__file__), 'data'), self.file_turb_graph),index_col=0)
         except IOError:
-            logging.info(
+            logger.info(
                 'No file %s in data folder' %self.file_turb_graph)
             sys.exit()
         turbine_types = []
@@ -277,15 +315,17 @@ class Modelchain(object):
                 return turbine_type
                 break
 
-        #logging.info('Turbine type could not be defined for plant %s. Dummy type used' %self.HPP.id)
+        #logger.info('Turbine type could not be defined for plant %s. Dummy type used' %self.HPP.id)
         return 'dummy'
 
 
     def run_model(self):
         r"""
         Runs the model
-        :return: 
-        pandas.DataFrame
+
+        Returns
+        -------
+        power_output : DataFrame
         """
 
-        self.HPP.power_output = power_output.run(self.HPP, self.dV-self.HPP.dV_res,self.file_turb_eff)
+        self.HPP.power_output = power_output.run(self.HPP, self.dV-self.HPP.dV_res, self.file_turb_eff)

@@ -21,8 +21,7 @@ try:
 except ImportError:
     plt = None
 
-from git_repos.hydropowerlib.hydropowerlib import modelchain
-from git_repos.hydropowerlib.hydropowerlib import hydropower_plant as hpp
+from hydropowerlib import modelchain, hydropower_plant as hpp
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -38,7 +37,7 @@ for file in filenames:
     dV_hist_Raon = dV_hist_Raon.append(df)
 
 # Definition of the hydropower plant
-hydro_Raon = hpp.HydropowerPlant(id='HydroRaon',dV_n= 12,h_n=4.23,P_n=400000,turb_num=1,turb_type='Kaplan')
+hydro_Raon = hpp.HydropowerPlant(id='HydroRaon', dV_n=12, h_n=4.23, P_n=400000, turb_num=1, turb_type='Kaplan')
 
 # Definition of the modelchain
 mc_hpp_raon = modelchain.Modelchain(HPP=hydro_Raon,dV=dV_Raon,dV_hist=dV_hist_Raon)
@@ -55,7 +54,7 @@ logging.info('\tEnergy production in April : %d MWh\n\t\t\tEnergy production in 
 
 # Plot turbine power output
 if plt:
-    fig,ax=plt.subplots(1)
+    fig, ax= plt.subplots(1)
     plt.plot(hydro_Raon.power_output.index, hydro_Raon.power_output.values/1000)
     plt.grid(b=True, which='major',axis='y')
     plt.ylabel("Power output [kW]")
