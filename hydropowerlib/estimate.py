@@ -1,3 +1,11 @@
+"""
+The ``estimate`` module contains functions used from the modelchain to extend
+the parameters of a HydroPowerplant using historical river flow data.
+"""
+
+__copyright__ = "Copyright oemof developer group"
+__license__ = "GPLv3"
+
 import logging
 import pandas as pd
 import geopandas as gpd
