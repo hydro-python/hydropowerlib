@@ -8,6 +8,10 @@ hydropower plant.
 __copyright__ = "Copyright oemof developer group"
 __license__ = "GPLv3"
 
+import os
+import pandas as pd
+
+from pkg_resources import resource_stream
 
 class HydropowerPlant(object):
     r"""
@@ -78,11 +82,16 @@ class HydropowerPlant(object):
 
         self.power_output = None
 
-    def load_turb_params(self, file_turb_eff):
+    def load_turb_params(self, file_turb_eff=None):
         """
 
         """
-        df = pd.read_csv(os.path.join(os.path.join(os.path.dirname(__file__), 'data'), file_turb_eff), index_col=0)
+        if file_turb_eff is None:
+            file_turb_eff = resource_stream(__name__, 'data/turbine_type.csv')
+        else:
+            file_turb_eff = os.path.join(os.path.dirname(__file__), 'data', file_turb_eff)
+
+        df = pd.read_csv(file_turb_eff, index_col=0)
         try:
             self.turb_params = df.loc[self.turb_type]
         except KeyError:
