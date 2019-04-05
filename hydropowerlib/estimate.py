@@ -82,27 +82,24 @@ def dV_res_from_dV_hist(hpp, dV_hist):
     else:
         hpp.dV_res = 10
 
+    return hpp.dV_res
+
 def dV_n_from_dV_hist(hpp, dV_hist):
     """
-    Estimate value for `dV_n`, the nominal water flow through the turbine
+    Estimate the nominal water flow through the turbine `dV_n`
 
-    If P_n and h_n are known, dV_n is calculated through equation
-    P_n=h_n*dV_n*g*rho*eta_g_n*eta_t_n Where g=9.81 m/s², rho=1000 kg/m³,
-    eta_g_n (nominal generator efficiency)=0.95 and eta_t_n (nominal
-    turbine efficiency)=0.9 Otherwise dV_n is calculated from the flow
-    duration curve over several years, after subtracting dV_res. It is the
-    water flow reached or exceeded 20% of the time.
+    dV_n is calculated from the flow duration curve over several years, after
+    subtracting dV_res as the the water flow reached or exceeded 20% of the
+    time, ie the 0.8 quantile.
 
     Returns
     -------
     dV_n : float
     """
-    if hpp.h_n is not None and hpp.P_n is not None:
-        hpp.dV_n = hpp.P_n/(hpp.h_n*9.81*1000*0.9*0.95)
-    else:
-        fdc = pd.Series(hpp.dV_hist.sort_values(by='dV', ascending=False).dV.values - hpp.dV_res,
-                        index=np.linspace(0, 100, num= hpp.dV_hist.count()))
-        hpp.dV_n = np.interp(20, fdc.index, fdc.values)
+
+    hpp.dV_n = (dV_hist - hpp.dV_res).quantile(0.8)
+
+    return hpp.dV_n
 
 def P_n_or_h_n_from_characteristic_equation_at_nominal_load(hpp):
     """
@@ -144,6 +141,8 @@ def eta_g_n_from_P_n(hpp):
         eta_g_n = 95
 
     hpp.eta_g_n = eta_g_n / 100
+
+    return hpp.eta_g_n
 
 def turb_type_from_phase_diagram(hpp, file_turb_graph):
     """
