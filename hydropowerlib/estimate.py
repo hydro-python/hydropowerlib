@@ -58,16 +58,15 @@ def dV_res_from_dV_hist(hpp, dV_hist):
     if dV_hist is None:
         return 0
 
-    recent = dV_hist.sort_index().iloc[dV_hist.count()-1].index[0]
-    try:
-        ten_years = datetime.datetime(recent.year - 10, recent.month, recent.day)+datetime.timedelta(days=1)
-    except ValueError:
-        ten_years = datetime.datetime(recent.year - 10, recent.month, recent.day - 1)+datetime.timedelta(days=1)
-    dV_ten_years = dV_hist.sort_index().loc[ten_years:recent]
-    dV_mean = dV_ten_years.groupby([dV_ten_years.index.month, dV_ten_years.index.day]).mean()
-    mean_year = pd.Series(dV_mean['dV'].values, index=np.arange(1, len(dV_mean['dV'].values)+1, 1))
-    mean_fdc = pd.Series(mean_year.sort_values(ascending=False).values, index=mean_year.index)
-    dV_347 = mean_fdc.loc[347]
+    # Select last 10 years
+    dV_hist = dV_hist.loc[dV_hist.index[-1] - pd.tseries.offsets.DateOffset(years=10):]
+
+    # Averaged yearly profile
+    dV_mean = dV_hist.groupby(dV_hist.index.dayofyear).mean()
+
+    # 0.05 quantile <-> 347 day in flow duration curve
+    dV_347 = dV_mean.quantile(0.05)
+
     if dV_347 <= 0.06:
         hpp.dV_res = 0.05
     elif dV_347 <= 0.16:
