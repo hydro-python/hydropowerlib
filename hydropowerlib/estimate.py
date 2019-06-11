@@ -15,7 +15,7 @@ from pkg_resources import resource_stream
 
 logger = logging.getLogger(__name__)
 
-def missing_parameters(hpp, dV_hist=None, file_turb_graph)
+def missing_parameters(hpp, dV_hist=None, file_turb_graph=None):
     if not can_estimate(hpp, dV_hist):
         logger.error(f'The input data is not sufficient for plant {hpp.name}')
         raise RuntimeError(f'The input data is not sufficient for plant {hpp.name}')
@@ -53,7 +53,7 @@ def can_estimate(hpp, dV_hist=None):
     """
     return (((hpp.h_n is not None) and (hpp.P_n is not None)) or
             (((hpp.h_n is not None) or (hpp.P_n is not None)) and
-                ((dV_hist is not None) or (hpp.dV_n is not None))))
+             ((dV_hist is not None) or (hpp.dV_n is not None))))
 
 def dV_res_from_dV_hist(hpp, dV_hist):
     """

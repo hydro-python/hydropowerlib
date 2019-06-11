@@ -56,21 +56,21 @@ class Modelchain(object):
 
     Examples
     --------
-    >>> from hydropowerlib import modelchain
-    >>> from hydropowerlib import hydropower_plant
+    >>> from hydropowerlib import modelchain, hydropower_plant
     >>> example_plant = {
+    ...    'name': "Raon",
     ...    'H_n': 4.23,
     ...    'Q_n': 12,
     ...    'turbine_type': 'Kaplan'}
-    >>> example = hydropower_plant.HydropowerPlant(**example_plant)
-    >>> modelchain_data = {'dV': df_runoff,'dV_hist': df_dV_hist}
+    >>> example = HydropowerPlant(**example_plant)
+    >>> modelchain_data = {'dV': df_runoff, 'dV_hist': df_dV_hist}
     >>> example_md = modelchain.Modelchain(example, **modelchain_data)
     >>> print(example.H_n)
     4.23
 
     """
 
-    def __init__(self, hpp, dV, dV_hist=None, file_turb_eff='turbine_type.csv', file_turb_graph='charac_diagrams.csv'):
+    def __init__(self, hpp, dV, dV_hist=None, file_turb_eff=None, file_turb_graph=None):
 
         self.hpp = hpp
         self.dV = dV

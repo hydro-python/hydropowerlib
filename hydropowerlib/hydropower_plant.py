@@ -60,10 +60,11 @@ class HydropowerPlant(object):
     --------
     >>> from hydropowerlib import HydropowerPlant
     >>> example_plant = {
+    ...    'name': 'Raon',
     ...    'h_n': 4.23,
     ...    'dV_n': 12,
     ...    'turbine_type': 'Kaplan'}
-    >>> example = hydropower_plant.HydropowerPlant(**example_plant)
+    >>> example = HydropowerPlant(**example_plant)
     >>> print(example.dV_n)
     12
 
