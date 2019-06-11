@@ -18,11 +18,10 @@ try:
 except ImportError:
     plt = None
 
-from git_repos.hydropowerlib.hydropowerlib import modelchain
-from git_repos.hydropowerlib.hydropowerlib import hydropower_plant as hpp
+from hydropowerlib import Modelchain
+from hydropowerlib import HydropowerPlant
 
-logging.getLogger().setLevel(logging.INFO)
-
+logging.basicConfig(level=logging.INFO)
 
 conn_oedb = db.connection(section='oedb')
 
@@ -38,7 +37,7 @@ try:
     """
     plant_reg = pd.read_sql(sql_read, conn_oedb)
 
-    # Feel free to chage this to try another year
+    # Feel free to change this to try another year
     year_to_simulate=2008
 
     # Counts the plants simulated = the plants for which runoff data from the year to simulate was available
@@ -48,16 +47,16 @@ try:
     energy=0
 
     # DataFrame of all plants
-    plants_df=pd.DataFrame(columns=['P_n','dV_n','h_n','dV_res','turb_type','simu','prod','power_output'])
-    plants_df=plants_df.astype(dtype={'P_n':float,'dV_n':float,'h_n':float,'dV_res':float,'turb_type':str,'simu':bool,'prod':float,'power_output':pd.Series})
+    plants_df = pd.DataFrame(columns=['P_n', 'dV_n', 'h_n', 'dV_res', 'turb_type', 'simu', 'prod', 'power_output'])
+    plants_df = plants_df.astype(dtype={'P_n':float, 'dV_n':float, 'h_n':float, 'dV_res':float,
+                                        'turb_type':str, 'simu':bool, 'prod':float, 'power_output':pd.Series})
 
     for i in plant_reg.index:
         # Read the runoff time series of the raster cell in which the plant is (one time series per year)
-        sql_read= """SELECT year, time_series FROM hydrolib.watergap_runoff
-        WHERE geom_id=%s """ %plant_reg.loc[i,'wg_id']
-        discharge=pd.read_sql(sql_read, conn_oedb)
+        sql_read = ("SELECT year, time_series FROM hydrolib.watergap_runoff WHERE geom_id=%s" % plant_reg.loc[i,'wg_id'])
+        discharge = pd.read_sql(sql_read, conn_oedb)
 
-        simu=False
+        simu = False
 
         # Remove empty 2/29 cell on leap years (no leap years in watergap) and concatenate in one time series over several years
         ts_df=pd.DataFrame(columns=['dV'])
@@ -73,21 +72,37 @@ try:
                 plants_with_ts=plants_with_ts+1
                 power_outputs=pd.DataFrame(index=index_temp)
                 simu=True
-        if simu==True:
-            # Define the HydropowerPlant object and the ModelChain object based on available data
-            my_hpp=hpp.HydropowerPlant(P_n=plant_reg.loc[i,'electrical_capacity']*1000,id=plant_reg.loc[i,'id'])
-            my_mc=modelchain.Modelchain(HPP=my_hpp,dV=ts_df.loc[ts_df.index.year==year_to_simulate,:],dV_hist=ts_df)
-            my_mc.run_model()
-            power_outputs[plant_reg.loc[i,'id']]=my_hpp.power_output
-            energy=energy+(my_hpp.power_output.sum()*24)
-            plants_df.loc[my_hpp.id] = {'P_n': my_hpp.P_n, 'dV_n': my_hpp.dV_n, 'h_n': my_hpp.h_n, 'dV_res': my_hpp.dV_res,
-                                     'turb_type': my_hpp.turb_type, 'simu': simu,'prod':my_hpp.power_output.sum(),
-                                     'power_output': my_hpp.power_output.values}
-        else:
-            plants_df.loc[plant_reg.loc[i,'id']] = {'P_n': plant_reg.loc[i,'electrical_capacity']*1000, 'dV_n': None, 'h_n': None,
-                                        'dV_res': None, 'turb_type': None, 'simu': simu, 'prod':0,'power_output': None}
 
-    logging.info('\t%d from %d plants simulated \n\t\t\tEnergy produced : %d GWh' %(plants_with_ts,len(plants_df.index),energy/1000000000))
+        if simu:
+            # Define the HydropowerPlant object and the ModelChain object based on available data
+            my_hpp = HydropowerPlant(P_n=plant_reg.loc[i,'electrical_capacity']*1e3, name=plant_reg.loc[i,'id'])
+            my_mc = Modelchain(hpp=my_hpp, dV=ts_df.loc[ts_df.index.year==year_to_simulate,:], dV_hist=ts_df)
+            my_mc.run_model()
+            power_outputs[plant_reg.loc[i,'id']] = my_hpp.power_output
+            energy += my_hpp.power_output.sum()*24
+            plants_df.loc[my_hpp.name] = {
+                'P_n': my_hpp.P_n,
+                'dV_n': my_hpp.dV_n,
+                'h_n': my_hpp.h_n,
+                'dV_res': my_hpp.dV_res,
+                'turb_type': my_hpp.turb_type,
+                'simu': simu,
+                'prod':my_hpp.power_output.sum(),
+                'power_output': my_hpp.power_output.values
+            }
+        else:
+            plants_df.loc[plant_reg.loc[i,'id']] = {
+                'P_n': plant_reg.loc[i,'electrical_capacity']*1e3,
+                'dV_n': None,
+                'h_n': None,
+                'dV_res': None,
+                'turb_type': None,
+                'simu': simu,
+                'prod':0,
+                'power_output': None
+            }
+
+    logging.info('\n%d from %d plants simulated \n\tEnergy produced : %d GWh' % (plants_with_ts, len(plants_df.index), energy/1e9))
     #plants_df.to_csv('example_oedb.csv', index=True)
 finally:
     conn_oedb.close()

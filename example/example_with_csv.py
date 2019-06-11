@@ -47,22 +47,22 @@ mc_hpp_raon = Modelchain(hpp=hydro_Raon, dV=dV_Raon, dV_hist=dV_hist_Raon)
 mc_hpp_raon.run_model()
 
 # Get outputs of each month
-output_april = hydro_Raon.power_output.loc['2017-04']
-output_may = hydro_Raon.power_output.loc['2017-05']
+output_april = mc_hpp_raon.power_output.loc['2017-04'] / 1e6
+output_may = mc_hpp_raon.power_output.loc['2017-05'] / 1e6
 
-logging.info('\tEnergy production in April : %d MWh\n\t\t\tEnergy production in May : %d MWh'%(output_april.sum()/1000000,output_may.sum()/1000000))
+logging.info('\n\tEnergy production in April : %d MWh\n\tEnergy production in May : %d MWh'%(output_april.sum(), output_may.sum()))
 
 # Plot turbine power output
 if plt:
     fig, ax = plt.subplots(1)
-    plt.plot(hydro_Raon.power_output.index, hydro_Raon.power_output.values/1000)
+    plt.plot(mc_hpp_raon.power_output.index, mc_hpp_raon.power_output.values/1000)
     plt.grid(b=True, which='major', axis='y')
     plt.ylabel("Power output [kW]")
     plt.xlabel("Day")
     plt.xticks(rotation=45)
     plt.xlim('2017-04-01 00:00:00','2017-05-31 23:00:00')
-    ax.xaxis.set_major_locator(mdates.DayLocator(interval=5))  # to get a tick every 15 minutes
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))  # optional formatting
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=5))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
     plt.show()
 else:
     print(hydro_Raon.power_output)
