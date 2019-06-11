@@ -21,13 +21,15 @@ def missing_parameters(hpp, dV_hist=None, file_turb_graph=None):
         raise RuntimeError(f'The input data is not sufficient for plant {hpp.name}')
 
     if hpp.dV_res is None:
-        dV_res_from_dV_hist(hpp, hpp.dV_hist)
+        dV_res_from_dV_hist(hpp, dV_hist)
     if hpp.dV_n is None:
-        dV_n_from_dV_hist(hpp, hpp.dV_hist)
+        dV_n_from_dV_hist(hpp, dV_hist)
     if hpp.P_n is None != hpp.h_n is None:
         P_n_or_h_n_from_characteristic_equation_at_nominal_load(hpp)
     if hpp.turb_type is None:
         turb_type_from_phase_diagram(hpp, file_turb_graph)
+
+    eta_g_n_from_P_n(hpp)
 
     logger.debug(f'''
         Plant {hpp.name}
@@ -74,7 +76,8 @@ def dV_res_from_dV_hist(hpp, dV_hist):
         return 0
 
     # Select last 10 years
-    dV_hist = dV_hist.loc[dV_hist.index[-1] - pd.tseries.offsets.DateOffset(years=10):]
+    start_from = max(dV_hist.index[0], dV_hist.index[-1] - pd.tseries.offsets.DateOffset(years=10))
+    dV_hist = dV_hist.loc[start_from:]
 
     # Averaged yearly profile
     dV_mean = dV_hist.groupby(dV_hist.index.dayofyear).mean()
@@ -144,6 +147,8 @@ def eta_g_n_from_P_n(hpp):
     ----------
     [1] Bundesamt für Konjunkturfragen. Wahl, Dimensionierung und Abnahme einer Kleinturbine, 1995.
     """
+    P_n = hpp.P_n
+
     if P_n < 1000:
         eta_g_n = 80
     elif P_n < 5000:
